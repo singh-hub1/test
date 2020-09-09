@@ -1,0 +1,2 @@
+$ sudo -u postgres psql
+# \i /file_path/file_name.sql

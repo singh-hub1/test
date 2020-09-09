@@ -1,0 +1,416 @@
+do $$
+declare 
+	rate   film.rental_rate%type;
+	price_segment varchar(50);
+begin
+    -- get the rental rate
+    select rental_rate into rate 
+    from film 
+    where film_id = 100;
+	
+	-- assign the price segment
+	if found then
+		case rate
+		   when 0.99 then
+              price_segment =  'Mass';
+		   when 2.99 then
+              price_segment = 'Mainstream';
+		   when 4.99 then
+              price_segment = 'High End';
+		   else
+	    	  price_segment = 'Unspecified';
+		   end case;
+		raise notice '%', price_segment;  
+    end if;
+end; $$
+=================================================
+==================================================
+do $$ 
+declare
+    total_payment numeric; 
+    service_level varchar(25) ;
+begin
+     select sum(amount) into total_payment
+     from Payment
+     where customer_id = 100; 
+	 
+	 if found then
+	    case 
+		   when total_payment > 200 then
+               service_level = 'Platinum' ;
+           when total_payment > 100 then
+	           service_level = 'Gold' ;
+           else
+               service_level = 'Silver' ;
+        end case;
+		raise notice 'Service Level: %', service_level;
+     else
+	    raise notice 'Customer not found';
+	 end if;
+end; $$ 
+===================================
+=================================
+do $$
+declare
+   n integer:= 10;
+   fib integer := 0;
+   counter integer := 0 ; 
+   i integer := 0 ; 
+   j integer := 1 ;
+begin
+	if (n < 1) then
+		fib := 0 ;
+	end if; 
+	loop 
+		exit when counter = n ; 
+		counter := counter + 1 ; 
+		select j, i + j into i,	j ;
+	end loop; 
+	fib := i;
+    raise notice '%', fib; 
+end; $$
+==========================
+==============================
+do $$
+declare 
+   counter integer := 0;
+begin
+   while counter < 5 loop
+      raise notice 'Counter %', counter;
+	  counter := counter + 1;
+   end loop;
+end$$;
+=====================
+========================
+do $$
+begin
+   for counter in 1..5 loop
+	raise notice 'counter: %', counter;
+   end loop;
+end; $$
+===================
+====================
+do $$
+begin
+   for counter in reverse 5..1 loop
+      raise notice 'counter: %', counter;
+   end loop;
+end; $$
+=========================
+==========================
+do $$
+begin 
+  for counter in 1..6 by 2 loop
+    raise notice 'counter: %', counter;
+  end loop;
+end; $$
+=================
+=======================
+do
+$$
+declare
+    f record;
+begin
+    for f in select title, length 
+	       from film 
+	       order by length desc, title
+	       limit 10 
+    loop 
+	raise notice '%(% mins)', f.title, f.length;
+    end loop;
+end;
+$$
+====================
+======================
+do $$
+declare
+    -- sort by 1: title, 2: release year
+    sort_type smallint := 1; 
+	-- return the number of films
+	rec_count int := 10;
+	-- use to iterate over the film
+	rec record;
+	-- dynamic query
+    query text;
+begin
+		
+	query := 'select title, release_year from film ';
+	
+	if sort_type = 1 then
+		query := query || 'order by title';
+	elsif sort_type = 2 then
+	  query := query || 'order by release_year';
+	else 
+	   raise 'invalid sort type %s', sort_type;
+	end if;
+
+	query := query || ' limit $1';
+
+	for rec in execute query using rec_count
+        loop
+	     raise notice '% - %', rec.release_year, rec.title;
+	end loop;
+end;
+$$
+====================================
+=================================
+do
+$$
+declare 
+   i int = 0;
+   j int = 0;
+begin
+  <<outer_loop>>
+  loop 
+     i = i + 1;
+     exit when i > 3;
+	 -- inner loop
+	 j = 0;
+     <<inner_loop>>
+     loop 
+		j = j + 1;
+		exit when j > 3;
+		raise notice '(i,j): (%,%)', i, j;
+	 end loop inner_loop;
+  end loop outer_loop;
+end;
+$$
+=========================
+==========================
+do
+$$
+declare 
+   i int = 0;
+   j int = 0;
+begin
+  <<outer_loop>>
+  loop 
+     i = i + 1;
+     exit when i > 3;
+	 -- inner loop
+	 j = 0;
+     <<inner_loop>>
+     loop 
+		j = j + 1;
+		exit outer_loop when j > 3;
+		raise notice '(i,j): (%,%)', i, j;
+	 end loop inner_loop;
+  end loop outer_loop;
+end;
+$$
+==========================
+=============================
+do
+$$
+begin
+  
+  <<simple_block>>  
+   begin
+  	 exit simple_block;
+         -- for demo purposes
+	 raise notice '%', 'unreachable!';
+   end;
+   raise notice '%', 'End of block';
+end;
+$$
+============================
+============================
+do
+$$
+declare
+   counter int = 0;
+begin
+  
+  loop
+     counter = counter + 1;
+	 -- exit the loop if counter > 10
+	 exit when counter > 10;
+	 -- skip the current iteration if counter is an even number
+	 continue when mod(counter,2) = 0;
+	 -- print out the counter
+	 raise notice '%', counter;
+  end loop;
+end;
+$$
+======================
+=========================
+create function get_film_count(len_from int, len_to int)
+returns int
+language plpgsql
+as
+$$
+declare
+   film_count integer;
+begin
+   select count(*) 
+   into film_count
+   from film
+   where length between len_from and len_to;
+   
+   return film_count;
+end;
+$$;
+======================================
+==============================================
+create or replace function find_film_by_id(p_film_id int)
+returns varchar
+language plpgsql
+as $$
+declare
+   film_title film.title%type;
+begin
+  -- find film title by id
+  select title 
+  into film_title
+  from film
+  where film_id = p_film_id;
+  
+  if not found then
+     raise 'Film with id % not found', p_film_id;
+  end if;
+  
+  return title;
+  
+end;$$
+=============================
+==============================
+create or replace function get_film_stat(
+    out min_len int,
+    out max_len int,
+    out avg_len numeric) 
+language plpgsql
+as $$
+begin
+  
+  select min(length),
+         max(length),
+		 avg(length)::numeric(5,1)
+  into min_len, max_len, avg_len
+  from film;
+
+end;$$
+==================================
+===================================
+create or replace function swap(
+	inout x int,
+	inout y int
+) 
+language plpgsql	
+as $$
+begin
+   select x,y into y,x;
+end; $$;
+========================
+==============================
+create or replace function get_rental_duration(
+	p_customer_id integer
+)
+returns integer 
+language plpgsql
+as $$
+declare 
+	rental_duration integer; 
+begin
+	select 
+		sum( extract(day from return_date - rental_date)) 
+	into rental_duration 
+    from rental 
+	where customer_id = p_customer_id;
+
+	return rental_duration;
+end; $$
+==============================
+=================================
+create or replace function get_rental_duration(
+	p_customer_id integer, 
+	p_from_date date
+)
+returns integer 
+language plpgsql
+as $$
+declare 
+	rental_duration integer;
+begin
+	-- get the rental duration based on customer_id 
+	-- and rental date
+	select sum( extract( day from return_date + '12:00:00' - rental_date)) 
+	into rental_duration
+	from rental 
+	where customer_id = p_customer_id and 
+		  rental_date >= p_from_date;
+	
+	-- return the rental duration in days
+	return rental_duration;
+end; $$
+===============================
+================================
+create or replace function get_rental_duration(
+	p_customer_id integer, 
+	p_from_date date default '2005-01-01'
+)
+returns integer
+language plpgsql
+as $$
+declare 
+	rental_duration integer;
+begin
+	select sum( 
+		extract( day from return_date + '12:00:00' - rental_date)
+	) 
+	into rental_duration
+	from rental 
+	where customer_id= p_customer_id and 
+		  rental_date >= p_from_date;
+	 
+	return rental_duration;
+
+end; $$
+==========================
+===========================
+create or replace function get_film (
+  p_pattern varchar
+) 
+	returns table (
+		film_title varchar,
+		film_release_year int
+	) 
+	language plpgsql
+as $$
+begin
+	return query 
+		select
+			title,
+			release_year::integer
+		from
+			film
+		where
+			title ilike p_pattern;
+end;$$
+============================
+================================
+create or replace function get_film (
+	p_pattern varchar,
+	p_year int
+) 
+returns table (
+	film_title varchar,
+	film_release_year int
+) 
+language plpgsql
+as $$
+declare 
+    var_r record;
+begin
+	for var_r in(
+            select title, release_year 
+            from film 
+	     where title ilike p_pattern and 
+		    release_year = p_year
+        ) loop  film_title := upper(var_r.title) ; 
+		film_release_year := var_r.release_year;
+           return next;
+	end loop;
+end; $$ 
+==========================================
+========================================
+

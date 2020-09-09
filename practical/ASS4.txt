@@ -1,0 +1,583 @@
+bcasy13=# create table dept(deptno varchar(10) primary key, dept_name char(20));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "dept_pkey" for table "dept"
+CREATE TABLE
+
+bcasy13=# \d dept;
+              Table "public.dept"
+  Column   |         Type          | Modifiers 
+-----------+-----------------------+-----------
+ deptno    | character varying(10) | not null
+ dept_name | character(20)         | 
+Indexes:
+    "dept_pkey" PRIMARY KEY, btree (deptno)
+Referenced by:
+    TABLE "salesman" CONSTRAINT "salesman_deptno_fkey" FOREIGN KEY (deptno) REFERENCES dept(deptno) ON UPDATE CASCADE ON DELETE CASCADE
+
+
+
+bcasy13=# create table salesman(sno int primary key,s_name varchar(30),start_year int,deptno varchar(10) references dept(deptno) on delete cascade on update cascade);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "salesman_pkey" for table "salesman"
+CREATE TABLE
+
+bcasy13=# \d salesman;
+            Table "public.salesman"
+   Column   |         Type          | Modifiers 
+------------+-----------------------+-----------
+ sno        | integer               | not null
+ s_name     | character varying(30) | 
+ start_year | integer               | 
+ deptno     | character varying(10) | 
+Indexes:
+    "salesman_pkey" PRIMARY KEY, btree (sno)
+Foreign-key constraints:
+    "salesman_deptno_fkey" FOREIGN KEY (deptno) REFERENCES dept(deptno) ON UPDATE CASCADE ON DELETE CASCADE
+Referenced by:
+    TABLE "trip" CONSTRAINT "trip_sno_fkey" FOREIGN KEY (sno) REFERENCES salesman(sno) ON UPDATE CASCADE ON DELETE CASCADE
+
+
+
+bcasy13=# create table trip(tno int primary key,from_city varchar(20),to_city varchar(20),depature_date date,return_date date,sno int references salesman(sno) on delete cascade on update cascade);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "trip_pkey" for table "trip"
+CREATE TABLE
+
+bcasy13=# \d trip;
+                Table "public.trip"
+    Column     |         Type          | Modifiers 
+---------------+-----------------------+-----------
+ tno           | integer               | not null
+ from_city     | character varying(20) | 
+ to_city       | character varying(20) | 
+ depature_date | date                  | 
+ return_date   | date                  | 
+ sno           | integer               | 
+Indexes:
+    "trip_pkey" PRIMARY KEY, btree (tno)
+Foreign-key constraints:
+    "trip_sno_fkey" FOREIGN KEY (sno) REFERENCES salesman(sno) ON UPDATE CASCADE ON DELETE CASCADE
+Referenced by:
+    TABLE "expense" CONSTRAINT "expense_tno_fkey" FOREIGN KEY (tno) REFERENCES trip(tno) ON UPDATE CASCADE ON DELETE CASCADE
+
+
+bcasy13=# create table expense(eid int,amount money,tno int references trip(tno) on delete cascade on update cascade);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "expense_pkey" for table "expense"
+CREATE TABLE
+
+bcasy13=# \d expense;
+    Table "public.expense"
+ Column |  Type   | Modifiers 
+--------+---------+-----------
+ eid    | integer | not null
+ amount | money   | 
+ tno    | integer | 
+Indexes:
+    "expense_pkey" PRIMARY KEY, btree (eid)
+Foreign-key constraints:
+    "expense_tno_fkey" FOREIGN KEY (tno) REFERENCES trip(tno) ON UPDATE CASCADE ON DELETE CASCADE
+
+
+
+bcasy13=# select * from dept;
+ deptno |      dept_name       
+--------+----------------------
+ 1      | computer            
+ 2      | accounts            
+ 3      | science             
+ 4      | electronics         
+ 5      | production          
+(5 rows)
+
+
+bcasy13=# select * from salesman;
+ sno | s_name  | start_year | deptno 
+-----+---------+------------+--------
+  10 | Amit    |       2000 | 1
+  11 | Apurva  |       2010 | 1
+  12 | Roshani |       2018 | 2
+  13 | Purva   |       2013 | 2
+  14 | Saloni  |       2009 | 3
+  15 | Sayuri  |       2019 | 3
+  16 | Lavanya |       2019 | 4
+(7 rows)
+
+
+bcasy13=# select * from trip;
+ tno | from_city | to_city | depature_date | return_date | sno 
+-----+-----------+---------+---------------+-------------+-----
+ 200 | pune      | kerala  | 2010-10-10    | 2010-11-10  |  10
+ 201 | delhi     | kerala  | 2011-01-15    | 2011-01-30  |  10
+ 202 | mumbai    | delhi   | 2009-11-15    | 2010-12-12  |  11
+ 203 | pune      | delhi   | 2009-11-15    | 2010-12-19  |  12
+ 204 | pune      | kerala  | 2015-01-01    | 2015-02-15  |  13
+ 205 | delhi     | kerala  | 2018-01-15    | 2018-01-30  |  14
+(6 rows)
+
+bcasy13=# select * from expense;
+ eid |   amount   | tno 
+-----+------------+-----
+   1 | $10,000.00 | 200
+   2 | $15,000.00 | 200
+   3 | $15,000.00 | 201
+   4 | $25,000.00 | 202
+   5 | $35,000.00 | 203
+   6 | $35,000.00 | 203
+(6 rows)
+
+===================================================================================================================================================================================
+
+Query
+
+===================================================================================================================================================================================
+1. bcasy13=# select * from trip where tno in(select tno from expense where amount>'10000');
+ tno | from_city | to_city | depature_date | return_date | sno 
+-----+-----------+---------+---------------+-------------+-----
+ 200 | pune      | kerala  | 2010-10-10    | 2010-11-10  |  10
+ 201 | delhi     | kerala  | 2011-01-15    | 2011-01-30  |  10
+ 202 | mumbai    | delhi   | 2009-11-15    | 2010-12-12  |  11
+ 203 | pune      | delhi   | 2009-11-15    | 2010-12-19  |  12
+(4 rows)
+
+2. bcasy13=# update expense set amount=amount+'5000';
+UPDATE 6
+
+3. bcasy13=# select * from salesman where start_year<2010;
+ sno | s_name | start_year | deptno 
+-----+--------+------------+--------
+  10 | Amit   |       2000 | 1
+  14 | Saloni |       2009 | 3
+(2 rows)
+
+4. bcasy13=# select s_name from salesman where s_name like 'A%';
+ s_name 
+--------
+ Amit
+ Apurva
+(2 rows)
+
+5. bcasy13=# select sno,s_name from salesman where sno in(select sno from trip where to_city='delhi');
+ sno | s_name  
+-----+---------
+  12 | Roshani
+  11 | Apurva
+(2 rows)
+
+6. bcasy13=# select dept.deptno,dept.dept_name from dept,salesman,trip where dept.deptno=salesman.deptno and trip.sno=salesman.sno group by dept.deptno,dept.dept_name having max(salesman.sno)>=all(select max(sno) from trip group by sno);
+ deptno |      dept_name       
+--------+----------------------
+ 3      | science             
+(1 row)
+
+7. bcasy13=# select sum(eid) from expense where tno in(select tno from trip where sno in(select sno from salesman where s_name='Roshani'));
+ sum 
+-----
+  11
+(1 row)
+
+8. bcasy13=# select dept_name from dept where deptno in(select deptno from salesman where sno in(select sno from trip where tno in(select max(tno) from trip )));
+      dept_name       
+----------------------
+ science             
+(1 row)
+
+
+===================================================================================================================================================================================
+
+Cursor and Trigger
+
+===================================================================================================================================================================================
+
+1. 
+create or replace function list() returns int as
+'declare
+snm text;
+tnum text;
+tfrom text;
+tto text;
+tdate text;
+tret text;
+enum text;
+eamt text;
+ cur1 cursor for select salesman.s_name,trip.tno,trip.from_city,trip.to_city,trip.depature_date,trip.return_date,expense.eid,expense.amount from salesman,trip,expense where salesman.sno=trip.sno and trip.tno=expense.tno;
+begin
+ open cur1;
+ loop
+  fetch cur1 into snm,tnum,tfrom,tto,tdate,tret,enum,eamt;
+  exit when not found;
+  raise notice''Salesman Name = %
+         Trip Number = %
+         Trip Source = %
+         Trip Destination = %
+         Trip Starting Date = %
+         Trip End Date = %
+         Expense Id = %
+         Expense Amount = %
+                '',snm,tnum,tfrom,tto,tdate,tret,enum,eamt;
+ end loop;
+ close cur1;
+return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select list();
+NOTICE:  Salesman Name = Amit
+         Trip Number = 200
+         Trip Source = pune
+         Trip Destination = kerala
+         Trip Starting Date = 2010-10-10
+         Trip End Date = 2010-11-10
+         Expense Id = 1
+         Expense Amount = $15,000.00
+                
+NOTICE:  Salesman Name = Amit
+         Trip Number = 200
+         Trip Source = pune
+         Trip Destination = kerala
+         Trip Starting Date = 2010-10-10
+         Trip End Date = 2010-11-10
+         Expense Id = 2
+         Expense Amount = $20,000.00
+                
+NOTICE:  Salesman Name = Amit
+         Trip Number = 201
+         Trip Source = delhi
+         Trip Destination = kerala
+         Trip Starting Date = 2011-01-15
+         Trip End Date = 2011-01-30
+         Expense Id = 3
+         Expense Amount = $20,000.00
+                
+NOTICE:  Salesman Name = Apurva
+         Trip Number = 202
+         Trip Source = mumbai
+         Trip Destination = delhi
+         Trip Starting Date = 2009-11-15
+         Trip End Date = 2010-12-12
+         Expense Id = 4
+         Expense Amount = $30,000.00
+                
+NOTICE:  Salesman Name = Roshani
+         Trip Number = 203
+         Trip Source = pune
+         Trip Destination = delhi
+         Trip Starting Date = 2009-11-15
+         Trip End Date = 2010-12-19
+         Expense Id = 5
+         Expense Amount = $40,000.00
+                
+NOTICE:  Salesman Name = Roshani
+         Trip Number = 203
+         Trip Source = pune
+         Trip Destination = delhi
+         Trip Starting Date = 2009-11-15
+         Trip End Date = 2010-12-19
+         Expense Id = 6
+         Expense Amount = $40,000.00
+                
+ list 
+------
+    1
+(1 row)
+
+
+2.
+create or replace function salesdetail(text) returns int as
+'declare
+ cur1 cursor(snm text) for select * from salesman where s_name=snm;
+ res salesman%rowtype;
+begin
+ open cur1($1);
+ loop
+  fetch cur1 into res;
+  exit when not found;
+  raise notice''Details of % are % '',$1,res;
+ end loop;
+ close cur1;
+return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select salesdetail('Roshani');
+NOTICE:  Details of Roshani are (12,Roshani,2018,2) 
+ salesdetail 
+-------------
+           1
+(1 row)
+
+3.
+create or replace function tripinsert() returns trigger as
+'begin
+if new.depature_date<=current_date then
+ raise exception''The Departure date should be Greater than todays date'';
+end if;
+return old;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+create trigger ti before insert on trip for each row execute procedure tripinsert(); 
+CREATE TRIGGER
+
+bcasy13=# insert into trip values(206,'pune','Mumbai','2019-07-07','2019-08-12',10);
+ERROR:  The Departure date should be Greater than todays date
+
+4.
+create or replace function deltrip() returns int as
+'declare
+no int;
+amt money;
+cur1 cursor for select tno from trip where sno in(select sno from salesman where deptno in(select deptno from dept where dept_name=''computer''));
+begin
+open cur1;
+loop
+ fetch cur1 into no;
+ exit when not found;
+ select into amt amount from expense where tno=no;
+  if amt<''17000'' then
+   raise notice''The recods from computer department are being deleted'';
+   delete from trip where tno=no;
+  end if;
+end loop;
+close cur1;
+return 1;
+end;
+'language 'plpgsql'; 
+
+CREATE FUNCTION
+
+bcasy13=# select deltrip();
+NOTICE:  The recods from computer department are being deleted
+ deltrip 
+---------
+       1
+(1 row)
+
+
+===================================================================================================================================================================================
+
+Stored Procedure
+
+===================================================================================================================================================================================
+
+1.
+create or replace function te() returns text as
+'declare
+ res trip%rowtype;
+begin
+ select into res * from trip where tno in(select tno from expense where eid in(select eid from expense where amount in(select max(amount) from expense)));
+ return res; 
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select te();
+                    te                     
+-------------------------------------------
+ (203,pune,delhi,2009-11-15,2010-12-19,12)
+(1 row)
+
+2.
+create or replace function get_cnt() returns int as
+'declare
+ cnt int;
+begin
+ select into cnt count(tno) from trip where from_city=''pune'' and to_city=''kerala'';
+ return cnt;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select get_cnt();
+ get_cnt 
+---------
+       1
+(1 row)
+
+3.
+create or replace function get_info(text) returns int as
+'declare
+ name varchar(30);
+ cnt int;
+begin
+ for name in select s_name from salesman where deptno in (select deptno from dept where dept_name=$1)
+ loop
+   select into cnt count(tno) from trip where sno in(select sno from salesman where s_name=name);
+   raise notice''Salesman = % Trip count = %'',name,cnt;
+ end loop;
+ return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select get_info('accounts');
+NOTICE:  Salesman = Roshani Trip count = 1
+NOTICE:  Salesman = Purva Trip count = 1
+ get_info 
+----------
+        1
+(1 row)
+
+4.
+create or replace function get_nm() returns int as
+'declare
+ result salesman%rowtype;
+begin
+ for result in select sno,s_name from salesman where sno in(select sno from trip where to_city=''kerala'')
+ loop
+  raise notice ''Sno = % Salesman = %'',result.sno,result.s_name;
+ end loop;
+ return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select get_nm();
+NOTICE:  Sno = 13 Salesman = Purva
+NOTICE:  Sno = 10 Salesman = Amit
+NOTICE:  Sno = 14 Salesman = Saloni
+ get_nm 
+--------
+      1
+(1 row)
+
+
+===================================================================================================================================================================================
+
+Views
+
+===================================================================================================================================================================================
+
+1. 
+bcasy13=# create or replace view v1 as select dept.deptno,dept.dept_name from dept,salesman,trip where dept.deptno=salesman.deptno and trip.sno=salesman.sno group by dept.deptno,dept.dept_name having max(salesman.sno)>=all(select max(sno) from trip group by sno);
+CREATE VIEW
+
+bcasy13=# select * from v1
+bcasy13-# ;
+ deptno |      dept_name       
+--------+----------------------
+ 3      | science             
+(1 row)
+
+
+2.
+bcasy13=# create or replace view v2 as select sum(amount) from expense where tno in(select tno from trip where sno in(select sno from salesman where s_name='Roshani'));
+CREATE VIEW
+
+bcasy13=# select * from v2;
+    sum     
+------------
+ $80,000.00
+(1 row)
+
+3. 
+bcasy13=# create or replace view v3 as select * from salesman where deptno=(select deptno from dept where dept_name='accounts');
+CREATE VIEW
+
+bcasy13=# select * from v3;
+ sno | s_name  | start_year | deptno 
+-----+---------+------------+--------
+  12 | Roshani |       2018 | 2
+  13 | Purva   |       2013 | 2
+(2 rows)
+
+4.
+bcasy13=# create or replace view v4 as select s_name,trip.tno,from_city,to_city,depature_date,return_date,amount from salesman,trip,expense where salesman.sno=trip.sno and trip.tno=expense.tno;
+CREATE VIEW
+
+bcasy13=# select * from v4;
+ s_name  | tno | from_city | to_city | depature_date | return_date |   amount   
+---------+-----+-----------+---------+---------------+-------------+------------
+ Amit    | 201 | delhi     | kerala  | 2011-01-15    | 2011-01-30  | $20,000.00
+ Apurva  | 202 | mumbai    | delhi   | 2009-11-15    | 2010-12-12  | $30,000.00
+ Roshani | 203 | pune      | delhi   | 2009-11-15    | 2010-12-19  | $40,000.00
+ Roshani | 203 | pune      | delhi   | 2009-11-15    | 2010-12-19  | $40,000.00
+(4 rows)
+
+5.
+6.
+bcasy13=# select * from v3 where start_year=2013;
+ sno | s_name | start_year | deptno 
+-----+--------+------------+--------
+  13 | Purva  |       2013 | 2
+(1 row)
+
+7.
+bcasy13=# select s_name from v3 where sno in(select sno from trip where tno in(select tno from expense where amount>'10000'));
+ s_name  
+---------
+ Roshani
+(1 row)
+
+8.
+bcasy13=# select s_name from v4 where to_city='kerala';
+ s_name 
+--------
+ Amit
+(1 row)
+
+===================================================================================================================================================================================
+
+Exceptions
+
+===================================================================================================================================================================================
+
+1.
+create or replace function get_s(text) returns int as
+'declare
+ name text;
+ cnt int;
+begin
+ cnt:=-1;
+ for name in select s_name from salesman where deptno in(select deptno from dept where dept_name=$1) 
+ loop
+  select into cnt count(tno) from trip where sno in(select sno from salesman where s_name=name);
+  raise notice''Salesman = % Trip Count = %'',name,cnt;
+ end loop;
+ if (cnt=-1) then
+  raise exception''Invalid Department Name'';
+ end if;
+ return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select get_s('accounts');
+NOTICE:  Salesman = Roshani Trip Count = 1
+NOTICE:  Salesman = Purva Trip Count = 1
+ get_s 
+-------
+     1
+(1 row)
+
+
+bcasy13=# select get_s('abc');
+ERROR:  Invalid Department Name
+
+2. 
+create or replace function get_e(int,date) returns int as
+'declare
+ mn money;
+begin
+ for mn in select amount from expense where tno in(select tno from trip where tno=$1 and depature_date=$2)
+ loop
+  raise notice'' Expenses = %'',mn;
+ end loop;
+ if not found then
+  raise exception'' Invalid trip no or departure date'';
+ end if;
+return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select get_e(201,'2011-01-15');
+NOTICE:   Expenses = $20,000.00
+ get_e 
+-------
+     1
+(1 row)
+
+bcasy13=# select get_e(2010,'2011-01-15');
+ERROR:   Invalid trip no or departure date
+
+

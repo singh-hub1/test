@@ -1,0 +1,96 @@
+postgres=# create table vishal(id int,name text,add text);
+CREATE TABLE
+postgres=# \d vishal
+               Table "public.vishal"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ id     | integer |           |          | 
+ name   | text    |           |          | 
+ add    | text    |           |          | 
+*********************************************************************************************************************
+************************************************************************************************************************
+
+postgres=# alter table vishal add constraint vishal_pk primary key(id);  //how to add primary in table//
+ALTER TABLE
+postgres=# \d vishal
+               Table "public.vishal"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ id     | integer |           | not null | 
+ name   | text    |           |          | 
+ add    | text    |           |          | 
+Indexes:
+    "vishal_pk" PRIMARY KEY, btree (id)
+==================================================================
+================================================================
+
+postgres=# alter table vishal drop constraint vishal_pk;  //how to drop primary key in table
+ALTER TABLE
+postgres=# \d vishal;
+               Table "public.vishal"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ id     | integer |           | not null | 
+ name   | text    |           |          | 
+ add    | text    |           |          | 
+************************************************************************************************************
+****************************************************************************************************************
+
+postgres=# alter table vishal drop name;  //how to drop a column from a table//
+ALTER TABLE
+postgres=# \d vishal;
+               Table "public.vishal"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ id     | integer |           | not null | 
+ add    | text    |           |          | 
+=========================================================
+===========================================================
+
+postgres=# alter table vishal add column name varchar(90);  //how to add new column in a table//
+ALTER TABLE
+postgres=# \d vishal;
+                      Table "public.vishal"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ id     | integer               |           | not null | 
+ add    | text                  |           |          | 
+ name   | character varying(90) |           |          | 
+==============================================================
+==============================================================
+postgres=# alter table vishal rename to vishal_1;  //how to change table name to new name //
+ALTER TABLE
+postgres=# \d vishal_1
+                     Table "public.vishal_1"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ id     | integer               |           | not null | 
+ add    | text                  |           |          | 
+ name   | character varying(90) |           |          | 
+==============================================================
+==============================================================
+
+postgres=# alter table vishal_1 rename column id to roll;  //how to change column name //
+ALTER TABLE
+postgres=# \d vishal_1
+                     Table "public.vishal_1"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ roll   | integer               |           | not null | 
+ add    | text                  |           |          | 
+ name   | character varying(90) |           |          | 
+==========================================================
+=====================================================
+postgres=# alter table vishal_1 alter column roll type numeric(9);  //how to change column data type in a table //
+ALTER TABLE
+postgres=# \d vishal_1;
+                     Table "public.vishal_1"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ roll   | numeric(9,0)          |           | not null | 
+ add    | text                  |           |          | 
+ name   | character varying(90) |           |          | 
+
+=====================================================================
+======================================================================
+

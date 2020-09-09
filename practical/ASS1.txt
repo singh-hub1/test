@@ -1,0 +1,333 @@
+bcasy13=# create table Branch(bid int primary key,brname varchar(30),brcity varchar(10));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "branch_pkey" for table "branch"
+CREATE TABLE
+
+bcasy13=# create table Customer(cno int primary key,cname varchar(20),caddr varchar(35),city varchar(20));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "customer_pkey" for table "customer"
+CREATE TABLE
+
+bcasy13=# create table Loan_Application(lno int primary key,lamt_required money,lamt_approved money,l_date date);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "loan_application_pkey" for table "loan_application"
+CREATE TABLE
+
+bcasy13=# create table Ternary(bid integer references branch(bid) on delete cascade on update cascade,cno integer references Customer(cno) on delete cascade on update cascade,lno integer references Loan_Application(lno) on delete cascade on update cascade);
+
+bcasy13=# alter table ternary add constraint p_key primary key(bid,cno,lno);
+NOTICE:  ALTER TABLE / ADD PRIMARY KEY will create implicit index "p_key" for table "ternary"
+ALTER TABLE
+
+CREATE TABLE
+
+bcasy13=# select * from branch;
+ bid |   brname   | brcity 
+-----+------------+--------
+  11 | MG Road    | Pune
+  12 | Camp       | Pune
+  13 | Tilak Road | Pune
+  14 | AB Road    | Mumbai
+  15 | GS Road    | Mumbai
+(5 rows)
+
+bcasy13=# select * from Customer;
+ cno |  cname   |     caddr      |  city  
+----cno-+----------+----------------+--------
+   1 | Apurva   | 2 Bhvani peth  | Pune
+   2 | Saloni   | Warje          | Pune
+   3 | Roshani  | Lokmanya Nagar | Pune
+   4 | Priyanka | Kurle          | Mumbai
+   5 | Sanika   | Washi          | Mumbai
+(5 rows)
+
+bcasy13=# select * from loan_application;
+ lno | lamt_required | lamt_approved |   l_date   
+-----+---------------+---------------+------------
+  51 |    $10,000.00 |    $12,000.00 | 2015-05-12
+  52 |    $20,000.00 |     $1,200.00 | 2018-04-14
+  53 |     $2,000.00 |     $1,200.00 | 2016-10-13
+  54 |     $2,000.00 |     $1,200.00 | 2017-02-04
+  55 |    $20,000.00 |    $24,000.00 | 2011-01-01
+  56 |    $50,000.00 |     $3,600.00 | 2012-09-09
+  57 |     $5,000.00 |     $2,400.00 | 2012-09-09
+  58 | $7,000,000.00 | $7,000,000.00 | 2000-02-02
+(8 rows)
+
+
+
+bcasy13=# select * from ternary;
+ bid | cno | lno 
+-----+-----+-----
+  11 |   2 |  53
+  11 |   2 |  52
+  12 |   1 |  55
+  11 |   1 |  55
+  13 |   5 |  54
+  15 |   4 |  56
+  14 |   3 |  57
+  15 |   5 |  58
+  12 |   5 |  58
+(9 rows)
+
+
+
+
+
+
+=========================================================================================================================================================================
+
+NESTED QUERIES
+
+========================================================================================================================================================================
+
+1. bcasy13=# select cname from Customer where cno in(select cno from ternary where bid in(select bid from branch where brname='MG Road'));
+ cname  
+--------
+ Apurva
+ Saloni
+(2 rows)
+
+2. bcasy13=# select cname from customer where cno in(select cno from ternary where lno in(select lno from loan_application where lamt_approved<lamt_required));
+ cname  
+--------
+ Saloni
+ Sanika
+(2 rows)
+
+3. bcasy13=# select max(lamt_approved) from loan_application;
+    max     
+------------
+ $20,000.00
+(1 row)
+
+4. 
+
+5. bcasy13=# select count(lno) from loan_application where lno in(select lno from ternary where bid=(select bid from branch where brname='MG Road'));
+ count 
+-------
+     3
+(1 row)
+
+6. bcasy13=#  select cname,brname from customer,ternary,branch,loan_application where ternary.bid=branch.bid and loan_application.lno=ternary.lno and customer.cno=ternary.cno and extract(month from loan_application.l_date)=09;
+  cname   | brname  
+----------+---------
+ Priyanka | GS Road
+ Roshani  | AB Road
+(2 rows)
+
+========================================================================================================================================================================
+
+Stored Functions
+
+========================================================================================================================================================================
+
+1. create or replace function cust_total(varchar(30)) returns text as
+   'Declare
+	result text;
+    Begin 
+	select into result count(customer.cno) from customer,ternary,branch where customer.cno=ternary.cno and branch.bid=ternary.bid and branch.brname=$1;
+	result:=$1||'' ''||result;
+	return result;
+    End;
+    'language 'plpgsql';
+
+CREATE FUNCTION
+bcasy13=# select cust_total('Camp');
+ cust_total 
+------------
+ Camp 1
+(1 row)
+
+
+2. create or replace function maxloan() returns money as
+	'Declare
+		result money;
+	Begin
+		select into result max(lamt_approved) from loan_application;
+		return result;
+	End;
+	'language 'plpgsql';
+
+CREATE FUNCTION
+bcasy13=# select maxloan();
+  maxloan   
+------------
+ $20,000.00
+(1 row)
+
+=======================================================================================================================================================================
+
+Errors and Exceptions
+
+====================================================================================================================================================================
+1.
+
+create or replace function custtotal(varchar(30)) returns int as
+   'Declare
+	result text;
+	b int;
+    Begin
+	select into b bid from branch Where brname=$1;
+	if not found then
+		raise exception ''Invalid Name % '',$1;
+	else
+		select into result count(customer.cno) from customer,ternary,branch where customer.cno=ternary.cno and branch.bid=ternary.bid and branch.brname=$1;
+		result:=$1||'' ''||result;
+		raise notice ''Result = %'',result;
+	end if;
+	return 1;
+    End;
+    'language 'plpgsql';
+
+CREATE FUNCTION
+bcasy13=# select custtotal('Camp');
+NOTICE:  Result = Camp 1
+ custtotal 
+-----------
+         1
+(1 row)
+
+2.
+create or replace function increase20() returns int as
+'Declare
+  m money;
+Begin
+  for m in select lamt_approved from loan_application
+  loop
+   if (m<''10000'') then
+    raise notice ''The Loan amount approved is less than 10000 and it is increased by 20 percent''; 
+   end if;
+  end loop;
+  update loan_application set lamt_approved=lamt_approved+lamt_approved*(0.2);
+  return 1;
+End;
+'language 'plpgsql';
+CREATE FUNCTION
+bcasy13=# select increase20();
+NOTICE:  The Loan amount approved is less than 10000 and it is increased by 20 percent
+NOTICE:  The Loan amount approved is less than 10000 and it is increased by 20 percent
+NOTICE:  The Loan amount approved is less than 10000 and it is increased by 20 percent
+NOTICE:  The Loan amount approved is less than 10000 and it is increased by 20 percent
+NOTICE:  The Loan amount approved is less than 10000 and it is increased by 20 percent
+ increase20 
+------------
+          1
+(1 row)
+
+=======================================================================================================================================================================
+
+Views
+
+====================================================================================================================================================================
+
+1. bcasy13=# create view custdetail as select * from customer where cno in(select cno from ternary where lno in(select lno from loan_application where lamt_required>'5000'));
+CREATE VIEW
+
+bcasy13=# select * from custdetail;
+ cno |  cname   |     caddr     |  city  
+-----+----------+---------------+--------
+   1 | Apurva   | 2 Bhvani peth | Pune
+   2 | Saloni   | Warje         | Pune
+   4 | Priyanka | Kurle         | Mumbai
+
+bcasy13=# select * from custdetail where cno in(select cno from loan_application,ternary where custdetail.cno=ternary.cno and ternary.lno=loan_application.lno and lamt_approved='5000');
+ cno | cname | caddr | city 
+-----+-------+-------+------
+(0 rows)
+
+
+
+(3 rows)
+
+2. bcasy13=# create or replace view loanapp as select * from loan_application where lno in(select lno from ternary where bid in(select bid from branch where brname='Camp'));
+CREATE VIEW
+bcasy13=# select * from loanapp;
+ lno | lamt_required | lamt_approved |   l_date   
+-----+---------------+---------------+------------
+  55 |    $20,000.00 |    $24,000.00 | 2011-01-01
+(1 row)
+
+3.
+
+a.select * from custdetail;
+ cno |  cname   |     caddr     |  city  
+-----+----------+---------------+--------
+   1 | Apurva   | 2 Bhvani peth | Pune
+   2 | Saloni   | Warje         | Pune
+   4 | Priyanka | Kurle         | Mumbai
+(3 rows)
+
+b.bcasy13=# select * from loanapp where lamt_approved>'5000';
+ lno | lamt_required | lamt_approved |   l_date   
+-----+---------------+---------------+------------
+  55 |    $20,000.00 |    $24,000.00 | 2011-01-01
+(1 row)
+
+c.bcasy13=# select * from loanapp where lamt_required=lamt_approved;
+ lno | lamt_required | lamt_approved |   l_date   
+-----+---------------+---------------+------------
+  58 | $7,000,000.00 | $7,000,000.00 | 2000-02-02
+(1 row)
+
+bcasy13=# select a.lno,b.lno from loanapp as a,loanapp as b where a.lno<>b.lno and a.lamt_required=b.lamt_required;
+ lno | lno 
+-----+-----
+(0 rows)
+
+
+
+=====================================================================================================================================================================
+
+Triggers
+
+=====================================================================================================================================================================
+1. 
+bcasy13=#  create or replace function delcust() returns trigger as
+'begin
+raise notice''The Customer record being deleted'';
+return old;
+end;
+'language plpgsql;
+CREATE FUNCTION
+
+bcasy13=# delete from customer where cno=1;
+NOTICE:  The Customer record being deleted
+DELETE 1
+bcasy13=# select * from customer;
+ cno |  cname   |     caddr      |  city  
+-----+----------+----------------+--------
+   2 | Saloni   | Warje          | Pune
+   3 | Roshani  | Lokmanya Nagar | Pune
+   4 | Priyanka | Kurle          | Mumbai
+   5 | Sanika   | Washi          | Mumbai
+   6 | Lavanya  | Kondva         | 
+(5 rows)
+
+
+
+2. 
+bcasy13=# create or replace function loan() returns trigger as
+'declare 
+br text;
+mn money;
+begin
+select into br brname from branch where branch.bid=new.bid;
+if br=''Camp'' then
+ select into mn lamt_required from loan_application where loan_application.lno=new.lno; 
+ if mn < ''1000'' or mn > ''1000000'' then
+  raise exception''Invalid Loan ammount '';
+ end if;
+end if;
+return new;
+end;
+'language plpgsql;
+CREATE FUNCTION
+
+
+bcasy13=# create trigger chk_lamt before insert or update on ternary for each row execute procedure loan(); 
+CREATE TRIGGER
+
+
+bcasy13=# insert into ternary values(12,5,58);
+ERROR:  Invalid Loan ammount 
+
+ 
+

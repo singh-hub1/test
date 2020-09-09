@@ -1,0 +1,279 @@
+bcasy13=# create table cities(city varchar(20) primary key,state varchar(20));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "cities_pkey" for table "cities"
+CREATE TABLE
+
+bcasy13=# create table warehouses(wid int primary key,wname varchar(30),location varchar(20),city varchar(20) references cities(city) on delete cascade on update cascade);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "warehouses_pkey" for table "warehouses"
+CREATE TABLE
+
+bcasy13=# create table store(sid int primary key,store_name varchar(20),location_city varchar(20),wid int references warehouses(wid) on delete cascade on update cascade);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "store_pkey" for table "store"
+CREATE TABLE
+
+bcasy13=# create table cust(cno int primary key,cname varchar(50),addr varchar(50),cu_city varchar(20));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "cust_pkey" for table "cust"
+CREATE TABLE
+
+bcasy13=# create table orders(ono int primary key,odate date,cno int references cust(cno) on delete cascade on update cascade);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "orders_pkey" for table "orders"
+CREATE TABLE
+
+bcasy13=# create table items(itemno int primary key,description text,weight decimal(5,2),cost decimal(5,2));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "items_pkey" for table "items"
+CREATE TABLE
+
+bcasy13=# create table io(itemno int references items(itemno) on delete cascade on update cascade,ono int references orders(ono) on delete cascade on update cascade,primary key(itemno,ono),ordered_quantity int);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "io_pkey" for table "io"
+CREATE TABLE
+
+bcasy13=# create table si(sid int references store(sid) on delete cascade on update cascade,itemno int references items(itemno) on delete cascade on update cascade,primary key(sid,itemno),quantity int );
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "si_pkey" for table "si"
+CREATE TABLE
+
+bcasy13=# select * from cities;
+   city    |    state    
+-----------+-------------
+ Pune      | Maharashtra
+ Mumbai    | Maharashtra
+ Ahemdabad | Gujrat
+ Jaipur    | Rajasthan
+ Udaypur   | Rajasthan
+(5 rows)
+
+bcasy13=# select * from warehouses;
+ wid | wname |   location   |   city    
+-----+-------+--------------+-----------
+   1 | A     | Hinjewadi    | Pune
+   2 | B     | Warje        | Pune
+   3 | C     | Marine Drive | Mumbai
+   4 | D     | Gandhi chauk | Ahemdabad
+   5 | E     | KG chauk     | Jaipur
+(5 rows)
+
+bcasy13=# select * from store;
+ sid | store_name | location_city | wid 
+-----+------------+---------------+-----
+  11 | ABC        | Pune          |   1
+  12 | PQR        | Pune          |   1
+  13 | LMN        | Mumbai        |   3
+  14 | XYZ        | Mumbai        |   3
+  15 | XZ         | Jaipur        |   5
+(5 rows)
+
+bcasy13=# select * from cust;
+ cno |  cname  |     addr      | cu_city 
+-----+---------+---------------+---------
+ 161 | Roshani | Lokmany Nagar | Pune
+ 162 | Lavanya | Kondhwa       | Pune
+ 163 | Apurva  | Bhavani Peth  | Mumbai
+ 164 | Anurag  | Kasba Peth    | Mumbai
+ 165 | Atharva | Kasba Peth    | Udaypur
+(5 rows)
+
+bcasy13=# select * from orders;
+ ono |   odate    | cno 
+-----+------------+-----
+ 201 | 2013-10-16 | 161
+ 202 | 2013-10-03 | 162
+ 203 | 2013-10-03 | 163
+ 204 | 2013-09-03 | 164
+ 205 | 2014-09-07 | 165
+ 206 | 2014-09-07 | 163
+(6 rows)
+
+bcasy13=# select * from items;
+ itemno | description | weight |  cost  
+--------+-------------+--------+--------
+     91 | Phone       | 269.50 | 100.40
+     92 | Laptop      | 899.00 | 999.00
+     93 | Pendrive    |  79.00 | 300.00
+     94 | Hard Disk   |  90.80 | 600.50
+(4 rows)
+
+bcasy13=# select * from io;
+ itemno | ono | ordered_quantity 
+--------+-----+------------------
+     91 | 201 |                4
+     91 | 202 |                6
+     92 | 201 |                4
+     92 | 204 |                8
+     93 | 202 |                5
+     94 | 201 |                2
+(6 rows)
+
+bcasy13=# select * from si;
+ sid | itemno | quantity 
+-----+--------+----------
+  11 |     91 |       18
+  11 |     92 |       34
+  12 |     91 |       21
+  13 |     93 |       11
+  13 |     92 |       11
+  15 |     92 |       11
+(6 rows)
+
+===================================================================================================================================================================================
+
+Query
+
+===================================================================================================================================================================================
+1.
+bcasy13=# select description from items where weight=(select max(weight) from items);
+ description 
+-------------
+ Laptop
+(1 row)
+
+2.
+bcasy13=# select wname,location from warehouses where city='Pune';
+ wname | location  
+-------+-----------
+ A     | Hinjewadi
+ B     | Warje
+(2 rows)
+
+3.
+bcasy13=# select * from items where itemno in(select itemno from io where ono in(select ono from orders where cno = (select cno from cust where cname='Roshani')));
+ itemno | description | weight |  cost  
+--------+-------------+--------+--------
+     91 | Phone       | 269.50 | 100.40
+     92 | Laptop      | 899.00 | 999.00
+     94 | Hard Disk   |  90.80 | 600.50
+(3 rows)
+
+4.
+bcasy13=# select wname from warehouses where wid in(select wid from store group by wid having count(sid)>=all(select count(sid) from store group by wid));
+ wname 
+-------
+ A
+ C
+(2 rows)
+
+5.
+bcasy13=# select itemno,description from items where itemno in(select itemno from io group by itemno having count(ono)<=all(select count(ono) from io group by itemno));
+ itemno | description 
+--------+-------------
+     93 | Pendrive
+     94 | Hard Disk
+(2 rows)
+
+6.
+bcasy13=# select cust.cno,orders.ono from cust,orders where cust.cno=orders.cno group by orders.ono,cust.cno;
+ cno | ono 
+-----+-----
+ 164 | 204
+ 162 | 202
+ 161 | 201
+ 165 | 205
+ 163 | 203
+ 163 | 206
+(6 rows)
+
+
+===================================================================================================================================================================================
+
+Cursors and Triggers
+
+===================================================================================================================================================================================
+1.
+create function wcity(text) returns int as
+'declare
+ cur1 cursor for select wname from warehouses where city=$1; 
+ res text;
+begin
+ open cur1;
+ loop
+  fetch cur1 into res;
+  exit when not found;
+  raise notice''Warehouse name = %'',res;	
+ end loop;
+return 1;
+end;
+'language plpgsql;
+CREATE FUNCTION
+
+bcasy13=# select wcity('Pune');
+NOTICE:  Warehouse name = A
+NOTICE:  Warehouse name = B
+ wcity 
+-------
+     1
+(1 row)
+
+2.
+create or replace function list() returns int as
+'declare
+ cur cursor for select * from items where cost>=200 and cost<800;
+ itm items%rowtype;
+begin
+ raise notice''Item thst costs between 200 and 800 are'';
+ open cur;
+ loop
+  fetch cur into itm;
+  exit when not found;
+  raise notice''%'',itm;
+ end loop;
+ close cur;
+ return 1;
+end;
+'language plpgsql;
+
+CREATE FUNCTION
+
+bcasy13=# select list();
+NOTICE:  Item thst costs between 200 and 800 are
+NOTICE:  (93,Pendrive,79.00,300.00)
+NOTICE:  (94,"Hard Disk",90.80,600.50)
+ list 
+------
+    1
+(1 row)
+
+===================================================================================================================================================================================
+
+Views
+
+===================================================================================================================================================================================
+1.
+create view spares as select * from warehouses where wname='A';
+CREATE VIEW
+bcasy13=# select * from spares;
+ wid | wname | location  | city 
+-----+-------+-----------+------
+   1 | A     | Hinjewadi | Pune
+(1 row)
+
+2.
+bcasy13=# create view date as select * from cust where cno in(select cno from orders where odate='2013-10-16');
+CREATE VIEW
+bcasy13=# select * from date;
+ cno |  cname  |     addr      | cu_city 
+-----+---------+---------------+---------
+ 161 | Roshani | Lokmany Nagar | Pune
+(1 row)
+
+
+
+3.
+bcasy13=# select store_name from store where wid in(select wid from spares);
+ store_name 
+------------
+ ABC
+ PQR
+(2 rows)
+
+4.
+bcasy13=# select * from date where cu_city='Pune';
+ cno |  cname  |     addr      | cu_city 
+-----+---------+---------------+---------
+ 161 | Roshani | Lokmany Nagar | Pune
+(1 row)
+
+5.
+bcasy13=# select * from orders where cno in(select cno from date where cname='Roshani');
+ ono |   odate    | cno 
+-----+------------+-----
+ 201 | 2013-10-16 | 161
+(1 row)
+
+

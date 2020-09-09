@@ -1,0 +1,408 @@
+bcasy13=# create table movie(m_name varchar(25) primary key,release_year int,budget money);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "movie_pkey" for table "movie"
+CREATE TABLE
+
+bcasy13=# create table actor(a_name varchar(30) primary key,role varchar(30),charges money,a_address varchar(30));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "actor_pkey" for table "actor"
+CREATE TABLE
+
+bcasy13=# create table producer(producer_id int primary key,name varchar(30),p_address varchar(30)
+bcasy13(# );
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "producer_pkey" for table "producer"
+CREATE TABLE
+
+bcasy13=# create table ma(m_name varchar(25) references movie(m_name) on delete cascade on update cascade,a_name varchar(30) references actor(a_name) on delete cascade on update cascade,primary key(m_name,a_name));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "ma_pkey" for table "ma"
+CREATE TABLE
+
+bcasy13=# create table mp(m_name varchar(25) references movie(m_name) on delete cascade on update cascade,producer_id int references producer(producer_id) on delete cascade on update cascade,primary key(m_name,producer_id));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "mp_pkey" for table "mp"
+CREATE TABLE
+
+bcasy13=# select * from movie;
+        m_name         | release_year |     budget     
+-----------------------+--------------+----------------
+ Cast Away             |         2000 |  $9,000,000.00
+ End Game              |         2019 | $10,000,000.00
+ Black Panther         |         2015 |     $10,000.00
+ ABCD                  |         2016 |  $1,500,000.00
+ ABCD2                 |         2017 |  $2,500,000.00
+ Things i hate about u |         1999 |     $10,000.00
+(6 rows)
+
+bcasy13=# select * from Actor;
+      a_name      |  role   |  charges   |   a_address   
+------------------+---------+------------+---------------
+ Mr. Khan         | hero    | $10,000.00 | Mannat,Mumbai
+ Chadwick Boseman | hero    | $30,000.00 | America
+ Tom Hanks        | hero    | $22,000.00 | UK
+ Erik Killmonger  | villain | $66,000.00 | USA
+ Thanos           | villain |  $8,000.00 | India
+(5 rows)
+
+bcasy13=# select * from producer;
+ producer_id |       name       | p_address 
+-------------+------------------+-----------
+           1 | Kevin Feige      | USA
+           2 | David Grant      | UK
+           3 | Bhansali         | India
+           4 | Yash productions | India
+           5 | John wick        | US
+           6 | Mr. Khan         | India
+(6 rows)
+
+bcasy13=# select * from ma;
+    m_name     |      a_name      
+---------------+------------------
+ Cast Away     | Tom Hanks
+ End Game      | Chadwick Boseman
+ End Game      | Thanos
+ ABCD          | Thanos
+ Black Panther | Erik Killmonger
+ ABCD          | Mr. Khan
+(6 rows)
+
+bcasy13=# select * from mp;
+    m_name     | producer_id 
+---------------+-------------
+ ABCD          |           6
+ ABCD          |           1
+ End Game      |           1
+ End Game      |           2
+ Black Panther |           4
+ Black Panther |           5
+ ABCD2         |           6
+(7 rows)
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Nested Queries
+
+1. bcasy13=# select actor.a_name from actor,movie,ma where actor.a_name=ma.a_name and movie.m_name=ma.m_name and actor. a_name='Mr. Khan';
+  a_name  
+----------
+ Mr. Khan
+(1 row)
+
+2. bcasy13=# select actor.a_name,movie.m_name from actor,movie,ma where actor.a_name=ma.a_name and movie.m_name=ma.m_name;
+      a_name      |    m_name     
+------------------+---------------
+ Tom Hanks        | Cast Away
+ Chadwick Boseman | End Game
+ Thanos           | End Game
+ Thanos           | ABCD
+ Erik Killmonger  | Black Panther
+ Mr. Khan         | ABCD
+(6 rows)
+
+3. bcasy13=# select movie.m_name from movie,producer,mp where movie.m_name=mp.m_name and producer.producer_id=mp.producer_id and producer.name='Mr. Khan';
+ m_name 
+--------
+ ABCD
+ ABCD2
+(2 rows)
+
+4. bcasy13=# select m_name from movie where budget in(select max(budget) from movie); 
+  m_name  
+----------
+ End Game
+(1 row)
+
+5. bcasy13=# select m_name from movie where release_year>2000;
+    m_name     
+---------------
+ End Game
+ Black Panther
+ ABCD
+ ABCD2
+(4 rows)
+
+6. bcasy13=# select a_name from actor where role='villain';
+     a_name      
+-----------------
+ Erik Killmonger
+ Thanos
+(2 rows)
+
+7. bcasy13=# select actor.a_name,movie.m_name,movie.release_year from movie,actor,ma where actor.a_name=ma.a_name and movie.m_name=ma.m_name and actor.charges=(select max(charges) from actor);
+     a_name      |    m_name     | release_year 
+-----------------+---------------+--------------
+ Erik Killmonger | Black Panther |         2015
+(1 row)
+
+8. 
+//Calculation of sum and Count
+
+bcasy13=# select count(m_name),sum(budget) from movie;
+ count |      sum       
+-------+----------------
+     6 | $23,020,000.00
+(1 row)
+
+// Single value fro 2015
+
+bcasy13=# select count(m_name),sum(budget) from movie where release_year=2015;
+ count |    sum     
+-------+------------
+     1 | $10,000.00
+(1 row)
+==========================================================================================================================================================================
+
+Cursos and Triggers
+
+==========================================================================================================================================================================
+
+1.
+create function mbudget() returns trigger as
+'begin
+ if new.budget<''500000'' then
+ raise notice''The Budget of the movie is less than 500000'';
+ end if;
+return old;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+
+create trigger checkbudget before insert on movie for each row execute procedure mbudget(); 
+
+CREATE TRIGGER
+
+bcasy13=# insert into movie values('pqr',1999,'5000');
+NOTICE:  The Budget of the movie is less than 500000
+INSERT 0 0
+
+2.
+create or replace function maxact() returns int as
+'declare
+res text;
+cur cursor for select a_name from ma group by a_name having count(m_name)>=all(select count(m_name) from ma group by a_name);
+begin
+open cur;
+loop
+ fetch cur into res;
+ exit when not found;
+ raise notice''Actor acted in Max movies is = %'',res;
+end loop;
+close cur;
+return 1;
+end;
+'language 'plpgsql'; 
+
+CREATE FUNCTION
+
+bcasy13=# select maxact();
+NOTICE:  Actor acted in Max movies is = Thanos 
+ maxact 
+--------
+      1
+(1 row)
+
+
+
+==========================================================================================================================================================================
+
+Views
+
+==========================================================================================================================================================================
+
+1.
+bcasy13=# create or replace view prod as select name from producer where producer_id in(select producer_id  from mp where m_name in (select m_name from mp where producer_id in(select producer_id from producer where name='Mr. Khan')));
+
+CREATE VIEW
+
+bcasy13=# select * from prod;
+    name     
+-------------
+ Kevin Feige
+ Mr. Khan
+(2 rows)
+
+
+2.
+bcasy13=# create or replace view aname as select a_name from actor where a_address not in('India','Mannat,Mumbai');
+
+CREATE VIEW
+
+bcasy13=# select * from aname;
+      a_name      
+------------------
+ Chadwick Boseman
+ Tom Hanks
+ Erik Killmonger
+(3 rows)
+
+3.
+bcasy13=# create or replace view act as select actor.a_name from actor,ma where actor.a_name=ma.a_name group by actor.a_name;
+
+CREATE VIEW
+
+bcasy13=# select * from act;
+      a_name      
+------------------
+ Tom Hanks
+ Erik Killmonger
+ Thanos
+ Chadwick Boseman
+ Mr. Khan
+(5 rows)
+
+
+
+==========================================================================================================================================================================
+
+Stored Function
+
+==========================================================================================================================================================================
+
+1.
+create or replace function get_chrg() returns int as
+'declare 
+result text;
+a text;
+b text;
+begin
+for a,b  in select distinct charges,movie.m_name from movie,actor,ma where movie.m_name=ma.m_name and ma.a_name=actor.a_name and ma.a_name=''Thanos'' group by movie.m_name,charges
+loop
+ raise notice'' Charges = % and Movie = %'',a,b;
+end loop;
+return 1;
+end;
+'language 'plpgsql'; 
+
+CREATE FUNCTION
+
+bcasy13=# select get_chrg();
+NOTICE:   Charges = $8,000.00 and Movie = ABCD
+NOTICE:   Charges = $8,000.00 and Movie = End Game
+ get_chrg 
+----------
+        1
+(1 row)
+
+
+
+2.
+
+bcasy13=# create or replace function prmovie(varchar(30)) returns int as
+'declare 
+result ma%rowtype;
+begin
+for result in select movie.m_name,count(actor.a_name) from movie,actor,producer,ma,mp where movie.m_name=ma.m_name and actor.a_name=ma.a_name and mp.producer_id=producer.producer_id  and ma.m_name=mp.m_name and producer.name=$1 group by movie.m_name
+loop
+ raise notice''Movie = % '',result.m_name;
+end loop;
+ raise notice '' Number of Actor Count = %'',result.a_name;
+return 1;
+end;
+'language 'plpgsql';
+ 
+CREATE FUNCTION
+
+
+bcasy13=# select prmovie('Kevin Feige');
+NOTICE:  Movie = ABCD 
+NOTICE:  Movie = End Game 
+NOTICE:  Count = 2
+ prmovie 
+---------
+       1
+(1 row)
+
+
+3.
+create or replace function getact(varchar(25)) returns int as
+'declare
+ name text;
+begin
+ for name in select actor.a_name from actor,movie,ma where actor.a_name=ma.a_name and movie.m_name=ma.m_name and ma.m_name=$1
+loop
+ raise notice'' Actor Name = %'',name;
+end loop;
+return 1;
+end;
+'language 'plpgsql';
+
+CREATE FUNCTION
+
+bcasy13=# select getact('ABCD');
+NOTICE:   Actor Name = Mr. Khan
+NOTICE:   Actor Name = Thanos
+ getact 
+--------
+      1
+(1 row)
+
+
+==========================================================================================================================================================================
+
+Exceptions
+
+==========================================================================================================================================================================
+
+1.
+create or replace function get_act(varchar(25)) returns int as
+'declare
+ nm varchar(50);
+ cnt int;
+begin
+ for nm,cnt in select actor.a_name,count(actor.a_name) from movie,actor,ma where actor.a_name=ma.a_name and movie.m_name=ma.m_name and movie.m_name=$1 group by actor.a_name
+loop
+ raise notice'' Actor = %   Count = %'',nm,cnt;
+end loop;
+if not found then
+ raise exception''Movie Name is Invalid'';
+end if;
+return 1;
+end;
+'language 'plpgsql';
+
+CREATE FUNCTION
+
+bcasy13=# select get_act('ABCD');
+NOTICE:   Actor = Thanos   Count = 1
+NOTICE:   Actor = Mr. Khan   Count = 1
+ get_act 
+---------
+       1
+(1 row)
+
+bcasy13=# select get_act('ABCD3');
+ERROR:  Movie Name is Invalid
+
+2.
+bcasy13=# create or replace function prmovie(varchar(30)) returns int as
+'declare 
+result ma%rowtype;
+begin
+for result in select movie.m_name,count(actor.a_name) from movie,actor,producer,ma,mp where movie.m_name=ma.m_name and actor.a_name=ma.a_name and mp.producer_id=producer.producer_id  and ma.m_name=mp.m_name and producer.name=$1 group by movie.m_name
+loop
+ raise notice''Movie = % '',result.m_name;
+ raise notice '' Number of Actor Count = %'',result.a_name;
+end loop;
+if not found then
+ raise exception''Producer Name is Invalid'';
+end if;
+return 1;
+end;
+'language 'plpgsql';
+
+CREATE FUNCTION
+
+bcasy13=# select prmovie('AB');
+ERROR:  Producer Name is Invalid
+
+bcasy13=# select prmovie('Kevin Feige');
+NOTICE:  Movie = ABCD 
+NOTICE:   Number of Actor Count = 2
+NOTICE:  Movie = End Game 
+NOTICE:   Number of Actor Count = 2
+ prmovie 
+---------
+       1
+(1 row)
+
+
+
+ 

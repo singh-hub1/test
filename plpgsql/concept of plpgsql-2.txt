@@ -1,0 +1,443 @@
+PL/pgSQL Select Into:
+__________________________
+
+Summary: in this tutorial, you will learn how to use the PL/pgSQL select into statement to select data from the database and assign it to a variable.
+
+Introduction to PL/pgSQL Select Into statement:
+________________________________________________________
+The select into statement allows you to select data from the database and assign the data to a variable.
+
+The following illustrates the syntax of the select into statement:
+
+select select_list
+into variable_name
+from table_expression;
+
+In this syntax, you place the variable after the into keyword. The select into statement will assign the data returned by the select clause to the variable.
+
+Besides selecting data from a table, you can use other clauses of the select statement such as join, group by, and having.
+
+PL/pgSQL Select Into statement example:
+
+See the following example:
+
+do $$
+declare
+   actor_count integer;
+begin
+   -- select the number of actors from the actor table
+   select count(*)
+   into actor_count
+   from actor;
+   -- show the number of actors
+   raise notice 'The number of actors: %', actor_count;
+end; $$
+
+Output:
+
+NOTICE:  The number of actors: 200
+
+In this example:
+
+1)First, declare a variable called actor_count that stores the number of actors from the actor table.
+2)Second, use the select into statement to assign the number of actors to the actor_count.
+3)Finally, display a message that shows the value of the actor_count variable using the raise notice statement.
+
+Summary:
+
+Use the select into statement to select data from the database and assign it to a variable.
+
+----------------------------------PL/pgSQL Row Types---------------------
+______________________________________________________________________________
+
+Summary: in this tutorial, you will learn how to use the PL/pgSQL row types to declare row variables that hold a complete row of a result set.
+
+**********Introduction to PL/pgSQL row types***************
+________________________________________________________________
+
+To store the whole row of a result set returned by the select into statement, you use the row-type variable or row variable.
+
+You can declare a variable that has the same datatype as the datatype of the row in a table by using the following syntax:
+
+row_variable table_name%ROWTYPE;
+row_variable view_name%ROWTYPE;
+
+To access the individual field of the row variable, you use the dot notation (.) like this:
+
+row_variable.field_name
+
+PL/pgSQL row types example
+
+We’ll use the actor table from the sample database to show how row types work:
+
+
+The following example shows the first name and last name of the actor id 10:
+
+do $$
+declare
+   selected_actor actor%rowtype;
+begin
+   -- select actor with id 10  
+   select *
+   from actor
+   into selected_actor
+   where actor_id = 10;
+-- show the number of actor
+   raise notice 'The actor name is % %',
+      selected_actor.first_name,
+      selected_actor.last_name;
+end; $$
+
+How it works.
+
+1)First, declare a row variable called selected_actor whose datatype is the same as the row in the actor table.
+2)Second, assign the row whose value in the actor_id column is 10 to the selected_actor variable by using the select into statement.
+3)Third, show the first name and last name of the selected actor by using the raise notice statement. It accessed the first_name and last_name fields using the dot notation.
+
+Summary
+
+Use row type variables (%ROWTYPE) to hold a row of a result set returned by the select into statement.
+
+---------------------PL/pgSQL Record Types-----------------------------
+_____________________________________________________________________________
+
+Summary: in this tutorial, you will learn about the PL/pgSQL record types that allow you to define variables that can hold a single row from a result set.
+
+Introduction to PL/pgSQL record types
+
+PostgreSQL provides a “type” called the record that is similar to the row-type.
+
+To declare a record variable, you use a variable name followed by the record keyword like this:
+
+
+variable_name record;
+
+A record variable is similar to a row-type variable. It can hold only one row of a result set.
+
+Unlike a row-type variable, a record variable does not have a predefined structure. The structure of a record variable is determined when the select or for statement assigns an actual row to it.
+
+To access a field in the record, you use the dot notation (.) syntax like this:
+
+record_variable.field_name;
+
+If you attempt to access a field in a record variable before it is assigned, you will get an error.
+
+In fact, a record is not a true data type. It is just a placeholder. Also, a record variable can change its structure when you reassign it.
+
+******************PL/pgSQL record examples************************
+
+Let’s take some examples of using the record variables.
+
+1) Using record with the select into statement
+
+The following example illustrates how to use the record variable with the select into statement:
+do
+$$
+declare
+rec record;
+begin
+-- select the film
+select film_id, title, length
+into rec
+from film
+where film_id = 200;
+raise notice '% % %', rec.film_id, rec.title, rec.length;  
+end;
+$$
+language plpgsql;
+
+How it works.
+
+1)First, declare a record variable called rec in the declaration section.
+2)Second use the select into statement to select a row whose film_id is 200 into the rec variable
+3)Third, print out the information of the film via the record variable.
+4) Using record variables in the for loop statement.
+
+The following shows how to use a record variable in a for loop statement:
+do
+$$
+declare
+rec record;
+begin
+for rec in select title, length
+from film
+where length > 50
+order by length
+loop
+raise notice '% (%)', rec.title, rec.length;
+end loop;
+end;
+$$
+
+Here is the parial output:
+NOTICE:  Hall Cassidy (51)
+NOTICE:  Champion Flatliners (51)
+NOTICE:  Deep Crusade (51)
+NOTICE:  Simon North (51)
+NOTICE:  English Bulworth (51)
+...
+Note that you will learn more about the for loop statement in the for loop tutorial.
+
+How it works:
+
+First, declare a variable named r with the type record.
+Second, use the for loop statement to fetch rows from the film table (in the sample database). The for loop statement assigns the row that consists of title and length to the rec variable in each iteration.
+Third, show the contents of the fields of the record variable by using the dot notation (rec.title and rec.length)
+
+Summary
+
+A record is a placeholder that can hold a single row of a result set.
+A record has not predefined structure like a row variable. Its structure is determined when you assign a row to it.
+
+---------------------------PL/pgSQL Constants------------------
+__________________________________________________________________________
+Summary: in this tutorial, you will learn about PL/pgSQL constants whose values cannot be changed.
+
+****************Introduction to PL/pgSQL constants********************
+
+Unlike a variable, the value of a constant cannot be changed once it initialized.
+
+The following are the reasons to use constants.
+
+First, constants make code more readable and maintainable e.g., imagine that you have the following formula:
+
+selling_price := net_price + net_price * 0.1;
+
+What does 0.1 means? It can be interpreted as anything.
+
+But when you use the following formula, everyone knows the meaning of the calculation of the selling price that equals the net price plus value-added tax (VAT).
+
+selling_price := net_price + net_price * vat;
+
+Second, constants reduce maintenance effort.
+
+Suppose that you have a formula that calculates the selling price in all over places in a function. When the VAT changes e.g., from 0.1 to 0.5, you need to change all of these hard-coded values.
+
+By using a constant, you just need to change its value in one place where you define the constant.
+
+******************So how do you define a constant in PL/pgSQL?************************
+::::Defining constants::::
+
+To define a constant in PL/pgSQL, you use the following syntax:
+
+constant_name constant data_type := expression;
+
+In this syntax:
+
+1)First, specify the name of the constant. The name should be as descriptive as possible.
+2)Second, add the constant keyword after the name and specify the data type of the constant.
+3)Third, initialize a value for the constant after the assignment operator (:=).
+
+-----------PL/pgSQL constants example--------------
+_________________________________________________________
+
+The following example declares a constant named vat that stores the value-added tax and calculates the selling price from the net price:
+
+do $$
+declare
+   vat constant numeric := 0.1;
+   net_price    numeric := 20.5;
+begin
+   raise notice 'The selling price is %', net_price * ( 1 + vat );
+end $$;
+
+OUTPUT:
+NOTICE:  The selling price is 22.55
+
+Now, if you try to change the value of the constant as follows:
+
+do $$
+declare
+   vat constant numeric := 0.1;
+   net_price    numeric := 20.5;
+begin
+   raise notice 'The selling price is %', net_price * ( 1 + vat);
+   vat := 0.05;
+end $$;
+
+OUTPUT::
+You will get the following error message:
+ERROR: "vat" is declared CONSTANT
+
+SQL state: 22005
+Character: 155
+Similar to the default value of a variable, PostgreSQL evaluates the value for the constant when the block is entered at run-time, not compile-time. For example:
+
+do $$
+declare
+   start_at constant time := now();
+begin
+   raise notice Start executing block at %', start_at;
+end $$;
+
+NOTICE:  Start executing block at 17:49:59.791
+
+PostgreSQL evaluates the now() function every time the block is called. To see its effect, you can execute the block repeatedly:
+
+NOTICE:  Start executing block at 17:50:44.956
+
+-----------------------PL/pgSQL IF Statement--------------------
+___________________________________________________________________________
+
+Summary: in this tutorial, you will learn how to use the PL/pgSQL if statements to execute a command based on a specific condition.
+
+The if statement determines which statements to execute based on the result of a boolean expression.
+
+PL/pgSQL provides you with three forms of the if statements.
+
+A)if then
+B)if then else
+C)if then elsif
+
+-------------------------1) PL/pgSQL if-then statement-----------------------------------
+
+The following illustrates the simplest form of the if statement:
+
+if condition then
+   statements;
+end if;
+
+The if statement executes statements if a condition is true. If the condition evaluates to false, the control is passed to the next statement after the END if part.
+
+The condition is a boolean expression that evaluates to true or false.
+
+The statements can be one or more statements that will be executed if the condition is true. It can be any valid statement, even another if statement.
+
+When an if statement is placed inside another if statement, it is called a nested-if statement.
+
+The following flowchart illustrates the simple if statement.
+
+----------------------PL/pgSQL if statement---------------
+___________________________________________________________
+See the following example:
+
+do $$
+declare
+  selected_film film%rowtype;
+  input_film_id film.film_id%type := 0;
+begin  
+
+  select * from film
+  into selected_film
+  where film_id = input_film_id;
+ 
+  if not found then
+     raise notice'The film % could not be found',
+   input_film_id;
+  end if;
+end $$;
+
+In this example, we selected a film by a specific film id (0).
+
+The found is a global variable that is available in PL/pgSQL procedure language. If the select into statement sets the found variable if a row is assigned or false if no row is returned.
+
+We used the if statement to check if the film with id (0) exists and raise a notice if it does not.
+
+ERROR:  The film 0 could not be found
+
+If you change the value of the input_film_id variable to some value that exists in the film table like 100, you will not see any message.
+
+-------------------------2) PL/pgSQL if-then-else statement-------------------
+
+The following illustrates the syntax of the if-then-else statement:
+
+if condition then
+  statements;
+else
+  alternative-statements;
+END if;
+
+The if then else statement executes the statements in the if branch if the condition evaluates to true; otherwise, it executes the statements in the else branch.
+
+The following flowchart illustrates the if else statement.
+
+---------------------------------------------3)PL/pgSQL if else statement--------------------
+
+See the following example:
+do $$
+declare
+  selected_film film%rowtype;
+  input_film_id film.film_id%type := 100;
+begin  
+ select * from film
+  into selected_film
+  where film_id = input_film_id;
+  if not found then
+     raise notice 'The film % could not be found',
+   input_film_id;
+  else
+     raise notice 'The film title is %', selected_film.title;
+  end if;
+end $$
+
+In this example, the film id 100 exists in the film table so that the FOUND variable was set to true. Therefore, the statement in the else branch executed.
+
+Here is the output:
+
+NOTICE:  The film title is Brooklyn Desert
+---------------------------------------4) PL/pgSQL if-then-elsif Statement-----------------------
+________________________________________________________________________________________
+
+The following illustrates the syntax of the if then elsif statement:
+
+if condition_1 then
+  statement_1;
+elsif condition_2 then
+  statement_2
+...
+elsif condition_n then
+  statement_n;
+else
+  else-statement;
+end if;
+
+The if and ifthen else statements evaluate one condition. However, the if then elsif statement evaluates multiple conditions.
+
+If a condition is true, the corresponding statement in that branch is executed.
+
+For example, if the condition_1 is true then the if then ELSif executes the statement_1 and stops evaluating the other conditions.
+
+If all conditions evaluate to false, the if then elsif executes the statements in the else branch.
+
+The following flowchart illustrates the if then elsif statement:
+
+PL/pgSQL if ELSif else Statement
+
+Let’s look at the following example:
+do $$
+declare
+   v_film film%rowtype;
+   len_description varchar(100);
+begin  
+ select * from film
+  into v_film
+  where film_id = 100;
+ if not found then
+     raise notice 'Film not found';
+  else
+      if v_film.length >0 and v_film.length <= 50 then
+len_description := 'Short';
+ elsif v_film.length > 50 and v_film.length < 120 then
+len_description := 'Medium';
+ elsif v_film.length > 120 then
+len_description := 'Long';
+ else
+len_description := 'N/A';
+ end if;
+   raise notice 'The % film is %.',
+    v_film.title,  
+    len_description;
+  end if;
+end $$
+
+How it works:
+
+First, select the film with id 100. If the film does not exist, raise a notice that the film is not found.
+Second, use the if then elsif statement to assign the film a description based on the length of the film.
+
+Summary
+
+Use the if then to execute statements when a condition is true.
+Use the if then else to execute statements when a condition is true and execute other statements when the condition is false.
+Use the if then elsif to evaluate multiple conditions and execute statements when the corresponding condition is true
+

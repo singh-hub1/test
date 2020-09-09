@@ -1,0 +1,328 @@
+bcasy13=# create table stud(rollno int primary key,name varchar(30),address varchar(50),class varchar(10));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "stud_pkey" for table "stud"
+CREATE TABLE
+bcasy13=# \d stud
+             Table "public.stud"
+ Column  |         Type          | Modifiers 
+---------+-----------------------+-----------
+ rollno  | integer               | not null
+ name    | character varying(30) | 
+ address | character varying(50) | 
+ class   | character varying(10) | 
+Indexes:
+    "stud_pkey" PRIMARY KEY, btree (rollno)
+
+
+ 
+bcasy13=# create table sub(scode varchar(10) primary key,subject_name varchar(20));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "sub_pkey" for table "sub"
+CREATE TABLE
+bcasy13=# \d sub
+                Table "public.sub"
+    Column    |         Type          | Modifiers 
+--------------+-----------------------+-----------
+ scode        | character varying(10) | not null
+ subject_name | character varying(20) | 
+Indexes:
+    "sub_pkey" PRIMARY KEY, btree (scode)
+
+bcasy13=# create table ss(rollno int references stud(rollno) on delete cascade on update cascade,scode varchar(10) references sub(scode) on delete cascade on update cascade, primary key(rollno,scode),marks_scored int);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "ss_pkey" for table "ss"
+CREATE TABLE
+bcasy13=# \d ss
+                Table "public.ss"
+    Column    |         Type          | Modifiers 
+--------------+-----------------------+-----------
+ rollno       | integer               | not null
+ scode        | character varying(10) | not null
+ marks_scored | integer               | 
+Indexes:
+    "ss_pkey" PRIMARY KEY, btree (rollno, scode)
+Foreign-key constraints:
+    "ss_rollno_fkey" FOREIGN KEY (rollno) REFERENCES stud(rollno) ON UPDATE CASCADE ON DELETE CASCADE
+    "ss_scode_fkey" FOREIGN KEY (scode) REFERENCES sub(scode) ON UPDATE CASCADE ON DELETE CASCADE
+
+bcasy13=# select * from stud;
+ rollno |   name   |    address     | class 
+--------+----------+----------------+-------
+      1 | Lavanya  | kondhwa        | fybca
+      2 | Roshani  | lokmanya nagar | fybca
+      3 | Priyanka | Vanaj          | sybca
+      4 | Anurag   | Vanaj          | sybca
+      5 | Apurva   | Bhavani peth   | tybca
+(5 rows)
+
+bcasy13=# select * from sub;
+ scode | subject_name 
+-------+--------------
+ fy1   | Fundaments
+ fy2   | Basic C
+ sy1   | Advanced C
+ sy2   | ARDBMS
+ ty1   | Java
+(5 rows)
+
+bcasy13=# select * from ss;
+ rollno | scode | marks_scored 
+--------+-------+--------------
+      1 | fy1   |           88
+      1 | fy2   |           78
+      2 | fy1   |           99
+      2 | sy1   |           99
+      3 | fy1   |           33
+      4 | fy2   |           33
+      5 | ty1   |           99
+      5 | sy2   |           93
+(8 rows)
+
+===================================================================================================================================================================================
+
+Query
+
+===================================================================================================================================================================================
+1.
+bcasy13=# select distinct name from stud where rollno in(select rollno from ss group by rollno having sum(marks_scored)>= all(select max(marks_scored) from ss group by rollno));
+  name   
+---------
+ Apurva
+ Roshani
+ Lavanya
+(3 rows)
+
+2.
+bcasy13=# select distinct subject_name from sub;
+ subject_name 
+--------------
+ ARDBMS
+ Basic C
+ Advanced C
+ Fundaments
+ Java
+(5 rows)
+
+3.
+bcasy13=# select stud.class,sub.subject_name from stud,sub,ss where stud.rollno=ss.rollno and sub.scode=ss.scode;
+ class | subject_name 
+-------+--------------
+ fybca | Fundaments
+ fybca | Basic C
+ fybca | Fundaments
+ fybca | Advanced C
+ sybca | Fundaments
+ sybca | Basic C
+ tybca | Java
+ tybca | ARDBMS
+(8 rows)
+
+===================================================================================================================================================================================
+
+Cursors and Triggers
+
+===================================================================================================================================================================================
+1.
+create or replace function getstud(text) returns int as
+'declare
+res cursor for select name,subject_name,marks_scored from stud,sub,ss where stud.rollno=ss.rollno and sub.scode=ss.scode and stud.address=$1;
+nm text;
+snm text;
+ms int;
+begin
+ open res;
+ loop 
+  fetch res into nm,snm,ms;
+   exit when not found;
+   raise notice''Details of the Student Living on the Adress = % are'',$1;
+   raise notice''Name = % 
+          Subject = %
+          Marks Scored = %'',nm,snm,ms;
+ end loop;
+ return 1;
+end;
+'language 'plpgsql'; 
+
+CREATE FUNCTION
+
+bcasy13=# select getstud('kondhwa');
+NOTICE:  Details of the Student Living on the Adress = kondhwa are
+NOTICE:  Name = Lavanya 
+          Subject = Fundaments
+          Marks Scored = 88
+NOTICE:  Details of the Student Living on the Adress = kondhwa are
+NOTICE:  Name = Lavanya 
+          Subject = Basic C
+          Marks Scored = 78
+ getstud 
+---------
+       1
+(1 row)
+
+
+2.
+create or replace function per() returns int as
+'declare
+ sum int;
+ rec stud%rowtype;
+ per float;
+ cnt int;
+ mark int;
+ cur1 cursor for select * from stud;
+begin
+ open cur1;
+ loop
+  fetch cur1 into rec;
+  exit when not found;
+  cnt:=0;
+  per:=0;
+  sum:=0;
+  for mark in select marks_scored from ss where rollno=rec.rollno
+  loop
+    sum:=sum+mark;
+    cnt:=cnt+1;
+  end loop;
+    cnt:=cnt*100;
+    per:=(sum*100)/cnt;
+  raise notice''Name = %  Percentage = %'',rec.name,per;
+ end loop;
+ close cur1;
+return 1;
+end;
+'language 'plpgsql'; 
+
+CREATE FUNCTION
+
+bcasy13=# select per();
+NOTICE:  Name = Lavanya  Percentage = 83
+NOTICE:  Name = Roshani  Percentage = 99
+NOTICE:  Name = Priyanka  Percentage = 73
+NOTICE:  Name = Anurag  Percentage = 83
+NOTICE:  Name = Apurva  Percentage = 96
+ per 
+-----
+   1
+(1 row)
+
+3.
+create or replace function delstud() returns trigger as
+'begin
+raise notice''Student Record Being Deleted'';
+return old;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+create trigger del before delete on stud for each row execute procedure delstud();
+CREATE TRIGGER
+
+bcasy13=# delete from stud where rollno=2;
+NOTICE:  Student Record Being Deleted
+
+4.
+create or replace function chkmark() returns trigger as
+'begin
+ if(new.marks_scored<10 or new.marks_scored>100) then
+	raise exception'' Marks Entered are INVALID'';
+ end if;
+return old;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+
+create trigger chk before insert or update on ss for each row execute procedure chkmark();
+CREATE TRIGGER
+
+bcasy13=# insert into ss values(1,'fy1',8);
+ERROR:   Marks Entered are INVALID
+
+===================================================================================================================================================================================
+
+Stored Function
+
+===================================================================================================================================================================================
+1.
+create or replace function getstud(text) returns int as
+'declare
+res cursor for select name,subject_name,marks_scored from stud,sub,ss where stud.rollno=ss.rollno and sub.scode=ss.scode and stud.address=$1;
+nm text;
+snm text;
+ms int;
+begin
+ open res;
+ loop 
+  fetch res into nm,snm,ms;
+   exit when not found;
+   raise notice''Details of the Student Living on the Adress = % are'',$1;
+   raise notice''Name = % 
+          Subject = %
+          Marks Scored = %'',nm,snm,ms;
+ end loop;
+ return 1;
+end;
+'language 'plpgsql'; 
+
+CREATE FUNCTION
+
+bcasy13=# select getstud('kondhwa');
+NOTICE:  Details of the Student Living on the Adress = kondhwa are
+NOTICE:  Name = Lavanya 
+          Subject = Fundaments
+          Marks Scored = 88
+NOTICE:  Details of the Student Living on the Adress = kondhwa are
+NOTICE:  Name = Lavanya 
+          Subject = Basic C
+          Marks Scored = 78
+ getstud 
+---------
+       1
+(1 row)
+
+===================================================================================================================================================================================
+
+Views
+
+===================================================================================================================================================================================
+1.
+bcasy13=# create or replace view data as select stud.name,stud.class,ss.marks_scored from stud,ss where stud.rollno=ss.rollno order by stud.name;
+CREATE VIEW
+
+bcasy13=# select * from data;
+   name   | class | marks_scored 
+----------+-------+--------------
+ Anurag   | sybca |           33
+ Apurva   | tybca |           99
+ Apurva   | tybca |           93
+ Lavanya  | fybca |           88
+ Lavanya  | fybca |           78
+ Priyanka | sybca |           33
+ Roshani  | fybca |           99
+ Roshani  | fybca |           99
+(8 rows)
+
+2.
+bcasy13=# create or replace view sdata as select stud.name,sub.subject_name,ss.marks_scored from stud,sub,ss where stud.rollno=ss.rollno and sub.scode=ss.scode and ss.marks_scored>40;
+
+CREATE VIEW
+
+bcasy13=# select * from sdata;
+  name   | subject_name | marks_scored 
+---------+--------------+--------------
+ Lavanya | Fundaments   |           88
+ Lavanya | Basic C      |           78
+ Roshani | Fundaments   |           99
+ Roshani | Advanced C   |           99
+ Apurva  | Java         |           99
+ Apurva  | ARDBMS       |           93
+(6 rows)
+
+3.
+bcasy13=# create or replace view s as select * from stud where name='Apurva';
+
+CREATE VIEW
+
+bcasy13=# select * from s;
+ rollno |  name  |   address    | class 
+--------+--------+--------------+-------
+      5 | Apurva | Bhavani peth | tybca
+(1 row)
+
+

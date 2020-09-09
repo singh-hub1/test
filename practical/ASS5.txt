@@ -1,0 +1,431 @@
+bcasy13=# create table route(route_no int primary key,source varchar(20),destination varchar(20),no_of_stations int);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "route_pkey" for table "route"
+CREATE TABLE
+
+bcasy13=# \d route;
+                Table "public.route"
+     Column     |         Type          | Modifiers 
+----------------+-----------------------+-----------
+ route_no       | integer               | not null
+ source         | character varying(20) | 
+ destination    | character varying(20) | 
+ no_of_stations | integer               | 
+Indexes:
+    "route_pkey" PRIMARY KEY, btree (route_no)
+
+
+
+bcasy13=# create table bus(bus_no int primary key,capacity int not null,depot_name varchar(20),route_no int references route(route_no) on delete cascade on update cascade);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "bus_pkey" for table "bus"
+CREATE TABLE
+bcasy13=# \d bus;
+               Table "public.bus"
+   Column   |         Type          | Modifiers 
+------------+-----------------------+-----------
+ bus_no     | integer               | not null
+ capacity   | integer               | not null
+ depot_name | character varying(20) | 
+ route_no   | integer               | 
+Indexes:
+    "bus_pkey" PRIMARY KEY, btree (bus_no)
+Foreign-key constraints:
+    "bus_route_no_fkey" FOREIGN KEY (route_no) REFERENCES route(route_no) ON UPDATE CASCADE ON DELETE CASCADE
+
+
+
+bcasy13=# create table driver(driver_no int primary key,driver_name varchar(20),license_no int unique,address varchar(20),d_age int,salary float);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "driver_pkey" for table "driver"
+NOTICE:  CREATE TABLE / UNIQUE will create implicit index "driver_license_no_key" for table "driver"
+CREATE TABLE
+bcasy13=# \d driver;
+              Table "public.driver"
+   Column    |         Type          | Modifiers 
+-------------+-----------------------+-----------
+ driver_no   | integer               | not null
+ driver_name | character varying(20) | 
+ license_no  | integer               | 
+ address     | character varying(20) | 
+ d_age       | integer               | 
+ salary      | double precision      | 
+Indexes:
+    "driver_pkey" PRIMARY KEY, btree (driver_no)
+    "driver_license_no_key" UNIQUE, btree (license_no)
+
+
+bcasy13=# create table bus_driver(bus_no int references bus(bus_no) on delete cascade on update cascade,driver_no int references driver(driver_no) on delete cascade on update cascade,primary key(bus_no,driver_no),date_of_duty date,shift text check(shift in ('morning','evening')));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "bus_driver_pkey" for table "bus_driver"
+CREATE TABLE
+bcasy13=# \d bus_driver
+     Table "public.bus_driver"
+    Column    |  Type   | Modifiers 
+--------------+---------+-----------
+ bus_no       | integer | not null
+ driver_no    | integer | not null
+ date_of_duty | date    | 
+ shift        | text    | 
+Indexes:
+    "bus_driver_pkey" PRIMARY KEY, btree (bus_no, driver_no)
+Check constraints:
+    "bus_driver_shift_check" CHECK (shift = ANY (ARRAY['morning'::text, 'evening'::text]))
+Foreign-key constraints:
+    "bus_driver_bus_no_fkey" FOREIGN KEY (bus_no) REFERENCES bus(bus_no) ON UPDATE CASCADE ON DELETE CASCADE
+    "bus_driver_driver_no_fkey" FOREIGN KEY (driver_no) REFERENCES driver(driver_no) ON UPDATE CASCADE ON DELETE CASCADE
+
+
+
+
+bcasy13=# select * from route;
+ route_no | source  | destination | no_of_stations 
+----------+---------+-------------+----------------
+        1 | kothrud | MNP         |             10
+        2 | MNP     | kothrud     |             10
+        3 | MNP     | deccan      |             13
+        4 | kothrud | deccan      |             11
+        5 | kothrud | deccan      |             11
+        6 | kothrud | deccan      |             17
+        7 | deccan  | kothrud     |             11
+        8 | deccan  | station     |             15
+        9 | station | deccan      |             15
+(9 rows)
+
+bcasy13=# select * from bus;
+ bus_no | capacity |  depot_name  | route_no 
+--------+----------+--------------+----------
+    100 |       30 | kothrud depo |        2
+    101 |       30 | kothrud depo |        7
+    102 |       25 | deccan depo  |        3
+    103 |       25 | deccan depo  |        4
+    104 |       25 | deccan depo  |        5
+    105 |       25 | deccan depo  |        6
+    106 |       35 | MNP depo     |        1
+    107 |        9 | MNP depo     |        2
+(8 rows)
+
+
+
+bcasy13=# select * from driver;
+ driver_no | driver_name | license_no |    address     | d_age | salary 
+-----------+-------------+------------+----------------+-------+--------
+        51 | Lavanya     |      12000 | kondhwa        |    35 |  15000
+        52 | Purva       |      12011 | Bibbewadi      |    31 |  18000
+        53 | Roshani     |   16102000 | Lokmanya Nagar |    40 |  20000
+        54 | Saloni      |   31102000 | warje          |    40 |  20000
+        55 | Prachi      |   31102022 | vakad          |    60 |  10000
+        56 | Saurabh     |   31102067 | abcd           | bcasy13=# (select driver_name from driver d, bus_driver db where d.driver_no= db.driver_no and shift ='morning') intersect (select driver_name from driver d, bus_driver db where d.driver_no= db.driver_no and shift='evening' and date_of_duty='2018-09-09');
+ driver_name 
+-------------
+ Prachi
+(1 row)
+
+   56 |  13000
+        57 | Atharva     |   31102557 | pqrs           |    45 |  15000
+(7 rows)
+
+bcasy13=# select * from bus_driver;
+ bus_no | driver_no | date_of_duty |  shift  
+--------+-----------+--------------+---------
+    100 |        51 | 2018-12-12   | morning
+    100 |        52 | 2018-12-12   | evening
+    101 |        51 | 2018-10-10   | evening
+    102 |        51 | 2018-10-10   | morning
+    104 |        55 | 2018-09-09   | morning
+    105 |        55 | 2018-09-09   | evening
+(6 rows)
+
+
+===================================================================================================================================================================================
+
+Query
+
+===================================================================================================================================================================================
+1.
+bcasy13=# select driver_name from driver where salary in(select max(salary) from driver);
+ driver_name 
+-------------
+ Roshani
+ Saloni
+(2 rows)
+
+2.
+delete from bus where capacity<10;
+DELETE 1
+
+3.
+bcasy13=# update driver set salary=salary+salary*0.5 where d_age>45;
+UPDATE 2
+
+4.
+bcasy13=# select * from route where route_no in(select route_no from bus where capacity=25);
+ route_no | source  | destination | no_of_stations 
+----------+---------+-------------+----------------
+        5 | kothrud | deccan      |             11
+        6 | kothrud | deccan      |             17
+        3 | MNP     | deccan      |             13
+        4 | kothrud | deccan      |             11
+(4 rows)
+
+5.
+bcasy13=# (select driver_name from driver d, bus_driver db where d.driver_no= db.driver_no and shift ='morning') intersect (select driver_name from driver d, bus_driver db where d.driver_no= db.driver_no and shift='evening');
+ driver_name 
+-------------
+ Lavanya
+ Prachi
+(2 rows)
+
+6.
+bcasy13=# (select driver_name from driver d, bus_driver db where d.driver_no= db.driver_no and shift ='morning') intersect (select driver_name from driver d, bus_driver db where d.driver_no= db.driver_no and shift='evening' and date_of_duty='2018-09-09');
+ driver_name 
+-------------
+ Prachi
+(1 row)
+
+                                                
+===================================================================================================================================================================================
+
+Cursors and Triggers
+
+===================================================================================================================================================================================
+1.
+create or replace function valid_age() returns trigger as
+'begin
+if  (new.d_age>18 and new.d_age<50) then
+  raise notice''Valid Entry'';
+else
+  raise exception''InValid Entry'';  
+end if; 
+                                                                                                                                                                                                                                                                                              
+return old;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# create trigger getage after insert or update on driver for each row execute procedure valid_age();
+CREATE TRIGGER
+
+bcasy13=# insert into driver values(59,'Anurag',4545454,'Vanaj',33,1899);
+NOTICE:  Valid Entry
+INSERT 0 1
+
+bcasy13=# insert into driver values(66,'Anu',5455454,'Vanaj',16,1899);
+ERROR:  InValid Entry
+
+2.
+create or replace function delbus() returns trigger as
+'begin
+if(old.capacity<10) then
+raise notice''Bus Record with capacity less than 10 are being deleted'';
+end if;
+return old;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# create trigger bustrig after delete on bus for each row execute procedure delbus();
+CREATE TRIGGER
+
+bcasy13=# delete from bus where capacity<10;
+NOTICE:  Bus Record with capacity less than 10 are being deleted
+DELETE 1
+
+3.
+
+4.
+create or replace function busdetail(text) returns int as
+'declare
+res driver%rowtype;
+cur cursor(dnm text) for select * from driver where driver_name=$1;
+begin
+open cur($1);
+fetch cur into res;
+if not found then
+raise exception''Invalid Driver Name'';
+end if;
+raise notice''Details of % are % , % , %, % , %'',$1,res.driver_no,res.license_no,res.address,res.d_age,res.salary;
+close cur;
+return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select busdetail('Roshani');
+NOTICE:  Details of Roshani are 53 , 16102000 , Lokmanya Nagar, 40 , 20000
+ busdetail 
+-----------
+         1
+(1 row)
+
+bcasy13=# select busdetail('Roo');
+ERROR:  Invalid Driver Name
+
+===================================================================================================================================================================================
+
+Stored Function
+
+===================================================================================================================================================================================
+1.
+create or replace function fun1() returns int as
+'declare
+name varchar(20);
+begin
+for name in select driver_name from driver where driver_no in (select driver_no from bus_driver where shift=''morning'' and date_of_duty=''2018-09-09'' and driver_no in(select driver_no from bus_driver where shift=''evening''))
+loop
+raise notice''Driver Name : %'',name;
+end loop;
+return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select fun1();
+NOTICE:  Driver Name : Prachi
+ fun1 
+------
+    1
+(1 row)
+
+2.
+create or replace function fun2(varchar(20)) returns int as
+'declare
+res driver%rowtype;
+begin
+for res in select * from driver where driver_name=$1
+loop
+ raise notice''Driver No = %
+         License No = %
+         Address = %
+         Age = %
+         Salary = %'',res.driver_no,res.license_no,res.address,res.d_age,res.salary;
+end loop;
+return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+bcasy13=# select fun2('Lavanya');
+NOTICE:  Driver No = 51
+         License No = 12000
+         Address = kondhwa
+         Age = 35
+         Salary = 15000
+ fun2 
+------
+    1
+(1 row)
+
+3.
+create or replace function fun3(int,date) returns int as
+'declare
+name varchar(20);
+begin
+select into name driver_name from driver where driver_no in(select driver_no from bus_driver where bus_no=$1 and date_of_duty=$2);
+raise notice''Alloted Driver Name = %'',name;
+return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select fun3(100,'2018-12-12');
+NOTICE:  Alloted Driver Name = Purva
+ fun3 
+------
+    1
+(1 row)
+
+===================================================================================================================================================================================
+
+View
+
+===================================================================================================================================================================================
+1.
+bcasy13=# create view bdetail as select bus.bus_no,bus.capacity,bus.depot_name,driver.driver_no,driver.driver_name,driver.license_no,driver.address,driver.d_age,driver.salary from bus,driver,bus_driver where bus.bus_no=bus_driver.bus_no and driver.driver_no=bus_driver.driver_no and bus.bus_no=100;
+
+bcasy13=# select * from bdetail;
+ bus_no | capacity |  depot_name  | driver_no | driver_name | license_no |  address  | d_age | salary 
+--------+----------+--------------+-----------+-------------+------------+-----------+-------+--------
+    100 |       30 | kothrud depo |        51 | Lavanya     |      12000 | kondhwa   |    35 |  15000
+    100 |       30 | kothrud depo |        52 | Purva       |      12011 | Bibbewadi |    31 |  18000
+(2 rows)
+
+2.
+bcasy13=# create view routebus as select * from bus where route_no=1 or route_no=2;
+CREATE VIEW
+bcasy13=# select * from routebus;
+ bus_no | capacity |  depot_name  | route_no 
+--------+----------+--------------+----------
+    100 |       30 | kothrud depo |        2
+    106 |       35 | MNP depo     |        1
+(2 rows)
+
+3.
+bcasy13=# create view maxsal as select driver_name from driver where salary in(select max(salary) from driver);
+CREATE VIEW
+bcasy13=# select * from maxsal;
+ driver_name 
+-------------
+ Roshani
+ Saloni
+(2 rows)
+
+4.
+bcasy13=# create view bd as select driver_name from driver where driver_no in(select driver_no from bus_driver where bus_no=100 and date_of_duty='2018-12-12');
+CREATE VIEW
+bcasy13=# select * from bd;
+ driver_name 
+-------------
+ Purva
+ Lavanya
+(2 rows)
+
+===================================================================================================================================================================================
+
+Exception
+
+===================================================================================================================================================================================
+1.
+create or replace function valid_age() returns trigger as
+'begin
+if  (new.d_age>18 and new.d_age<50) then
+  raise notice''Valid Entry'';
+else
+  raise exception''InValid Entry'';  
+end if; 
+                                                                                                                                                                                                                                                                                              
+return old;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# create trigger getage after insert or update on driver for each row execute procedure valid_age();
+CREATE TRIGGER
+
+bcasy13=# insert into driver values(59,'Anurag',4545454,'Vanaj',33,1899);
+NOTICE:  Valid Entry
+INSERT 0 1
+
+bcasy13=# insert into driver values(66,'Anu',5455454,'Vanaj',16,1899);
+ERROR:  InValid Entry
+
+2.
+create or replace function ex2(int,date) returns int as
+'declare
+name varchar(20);
+begin
+select into name driver_name from driver where driver_no in(select driver_no from bus_driver where bus_no=$1 and date_of_duty=$2);
+if not found then
+raise exception''Invalid Bus no'';
+end if;
+raise notice''Alloted Driver Name = %'',name;
+return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# select ex2(100,'2018-12-12');
+NOTICE:  Alloted Driver Name = Purva
+ ex2 
+-----
+   1
+(1 row)
+
+bcasy13=# select ex2(00,'2018-12-12');
+ERROR:  Invalid Bus no
+

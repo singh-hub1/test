@@ -1,0 +1,386 @@
+bcasy13=# create table student(sno int primary key,s_name varchar(30),s_class varchar(10),s_addr varchar(50));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "student_pkey" for table "student"
+CREATE TABLE
+
+
+bcasy13=# create table teacher(tno int primary key,t_name varchar(20),qualification varchar(15),experience int);
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "teacher_pkey" for table "teacher"
+CREATE TABLE
+
+
+bcasy13=# create table st(sno int references student(sno) on delete cascade on update cascade,tno int references teacher(tno) on delete cascade on update cascade,primary key(sno,tno));
+NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "st_pkey" for table "st"
+CREATE TABLE
+
+
+bcasy13=# select * from student;
+ sno | s_name  | s_class |     s_addr     
+-----+---------+---------+----------------
+   1 | Suresh  | FYBCA   | Vanaz
+   2 | Roshani | SYBCA   | Lokmanya Nagar
+   3 | Saurabh | SYBCS   | Parvati
+   4 | Apurva  | SYBCA   | Bhavani Peth
+   5 | Saloni  | TYBCA   | Varje Malwadi
+   6 | Neha    | TYBCA   | Sinhgad Road
+(6 rows)
+
+bcasy13=# select * from teacher;
+ tno |    t_name    | qualification | experience 
+-----+--------------+---------------+------------
+  51 | Mr. Kumar    | Ph.D          |         22
+  52 | Mr. Pathak   | Ph.D          |         12
+  53 | Mrs. Ambekar | M.Phill       |         10
+  54 | Mr. Satkar   | M.Phill       |         18
+  55 | Mr. Bagal    | MS            |          2
+(5 rows)
+
+bcasy13=# select * from st;
+ sno | tno |       subject        | marks 
+-----+-----+----------------------+-------
+   1 |  51 | RD                   |    80
+   1 |  52 | C                    |    70
+   2 |  51 | C                    |    80
+   2 |  53 | Computer Organizaion |    50
+   3 |  53 | Networking           |    60
+   4 |  54 | Software             |    70
+   5 |  54 | Software             |    78
+   5 |  51 | RD                   |    90
+(8 rows)
+
+
+
+Nested Queries
+
+1. bcasy13=# select t_name from teacher where experience=(select min(experience) from teacher);
+  t_name   
+-----------
+ Mr. Bagal
+(1 row)
+
+2. bcasy13=# select count(tno) from teacher where qualification='Ph.D';
+ count 
+-------
+     2
+(1 row)
+
+3. bcasy13=# select s_name,subject from student,st,teacher where student.sno=st.sno and teacher.tno=st.tno and t_name='Mr. Kumar';
+ s_name  | subject 
+---------+---------
+ Suresh  | RD
+ Roshani | C
+ Saloni  | RD
+(3 rows)
+
+4. bcasy13=# select t_name,subject from teacher,st where teacher.tno=st.tno ;
+    t_name    |       subject        
+--------------+----------------------
+ Mr. Kumar    | RD
+ Mr. Pathak   | C
+ Mr. Kumar    | C
+ Mrs. Ambekar | Computer Organizaion
+ Mrs. Ambekar | Networking
+ Mr. Satkar   | Software
+ Mr. Satkar   | Software
+ Mr. Kumar    | RD
+(8 rows)
+
+
+
+
+ 5. bcasy13=# select t_name from teacher where tno in(select tno from st where sno=(select sno from student where s_name='Suresh'));
+   t_name   
+------------
+ Mr. Pathak
+ Mr. Kumar
+(2 rows)
+
+6. bcasy13=# select count(student.sno),t_name from student,teacher,st where teacher.tno=st.tno and student.sno=st.sno group by t_name;
+ count |    t_name    
+-------+--------------
+     3 | Mr. Kumar
+     2 | Mr. Satkar
+     2 | Mrs. Ambekar
+     1 | Mr. Pathak
+(4 rows)
+
+7. bcasy13=# select s_name from student,teacher,st where student.sno=st.sno and teacher.tno=st.tno and teacher.t_name='Mr. Kumar' and marks=(select max(marks) from st);
+ s_name 
+--------
+ Saloni
+(1 row)
+
+===================================================================================================================================================================================
+
+Views
+
+===================================================================================================================================================================================
+
+1. bcasy13=# create view C_teacher as select * from teacher where tno in(select tno from st where subject='C');
+CREATE VIEW
+bcasy13=# select * from C_teacher; 
+
+ tno |   t_name   | qualification | experience 
+-----+------------+---------------+------------
+  52 | Mr. Pathak | Ph.D          |         12
+  51 | Mr. Kumar  | Ph.D          |         22
+(2 rows)
+
+2. bcasy13=# create view get_stud as select * from student where sno in(select sno from st where tno in(select tno from teacher where experience>3));
+CREATE VIEW
+bcasy13=# select * from get_stud; 
+ 
+sno | s_name  | s_class |     s_addr     
+-----+---------+---------+----------------
+   1 | Suresh  | FYBCA   | Vanaz
+   2 | Roshani | SYBCA   | Lokmanya Nagar
+   3 | Saurabh | SYBCS   | Parvati
+   4 | Apurva  | SYBCA   | Bhavani Peth
+   5 | Saloni  | TYBCA   | Varje Malwadi
+(5 rows)
+
+3.
+
+a. 
+bcasy13=# select t_name from C_teacher where experience =(select max(experience) from C_teacher);
+  t_name   
+-----------
+ Mr. Kumar
+(1 row)
+
+b. 
+bcasy13=# select s_name from get_stud where s_class='SYBCA';
+ s_name  
+---------
+ Apurva
+ Roshani
+(2 rows)
+
+
+===================================================================================================================================================================================
+
+Stored Functions
+
+===================================================================================================================================================================================
+
+1.
+create or replace function get_stud(varchar(20)) returns int as
+'declare 
+name alias for $1;
+result int;
+begin
+select into result count(student.sno) from student,st,teacher where student.sno=st.sno and teacher.tno=st.tno and t_name=name;
+return result;
+end;
+'language plpgsql;
+CREATE FUNCTION
+
+
+bcasy13=# select get_stud('Mr. Kumar');
+ get_stud 
+----------
+        3
+(1 row)
+
+2.
+bcasy13=# create or replace function get_teach(text) returns int as
+'declare 
+sub alias for $1;
+result int;
+begin
+select into result count(teacher.tno) from st,teacher where teacher.tno=st.tno and st.subject=sub;
+return result;
+end;
+'language plpgsql;
+CREATE FUNCTION
+
+bcasy13=# select get_teach('Software');
+ get_teach 
+-----------
+         2
+(1 row)
+
+3.
+bcasy13=# create or replace function get_mark(text) returns float as
+'declare 
+s alias for $1;
+result float;
+begin
+select into result sum(st.marks) from student,st where student.sno=st.sno and student.s_name=s;
+return result;
+end;
+'language plpgsql;
+
+CREATE FUNCTION
+
+bcasy13=# select get_mark('Roshani');
+ get_mark 
+----------
+      130
+(1 row)
+
+
+===================================================================================================================================================================================
+
+Cursors
+
+===================================================================================================================================================================================
+
+1.
+bcasy13=# create or replace function subteach(varchar(30)) returns int as
+'declare
+trec text;
+srec text;
+cur1 cursor(snm varchar(30)) for select t_name,subject from st,student,teacher where st.sno=student.sno and teacher.tno=st.tno and student.s_name=snm;
+begin
+open cur1($1);
+loop
+ fetch cur1 into trec,srec;
+ exit when not found;
+ raise notice''Teacher : %  Subject : %  '',trec,srec;
+end loop;
+close cur1;
+return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+
+bcasy13=# select subteach('Roshani');
+NOTICE:  Teacher : Mr. Kumar  Subject : C  
+NOTICE:  Teacher : Mrs. Ambekar  Subject : Computer Organizaion  
+ subteach 
+----------
+        1
+(1 row)
+
+
+2. 
+bcasy13=# create or replace function totsub() returns int as
+'declare
+cur1 cursor for select count(subject),t_name from teacher,st where st.tno=teacher.tno group by t_name;
+cnt int;
+tnm text;
+begin
+open cur1;
+loop
+ fetch cur1 into cnt,tnm;
+ exit when not found;
+ raise notice''Teacher : %  Count : %  '',tnm,cnt;
+end loop;
+close cur1;return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+
+bcasy13'# 'language 'plpgsql'; 
+CREATE FUNCTION
+bcasy13=# select totsub();
+NOTICE:  Teacher : Mr. Kumar  Count : 2  
+NOTICE:  Teacher : Mr. Satkar  Count : 2  
+NOTICE:  Teacher : Mrs. Ambekar  Count : 2  
+ totsub 
+--------
+      1
+(1 row)
+
+
+===================================================================================================================================================================================
+
+Errors and Exceptions
+
+===================================================================================================================================================================================
+
+1.
+create or replace function totstud(varchar(20)) returns int as
+'declare
+ tno int;
+begin
+ select into tno count(sno) from st where tno in(select tno from teacher where t_name=$1);
+  if not found then 
+   raise exception''No student is taught by this % teacher'',$1;
+  end if;
+   raise notice''Number of students = %'',tno;
+  return 1;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+
+bcasy13=# select totstud('Mr. Kumar');
+NOTICE:  Number of students = 2
+ totstud 
+---------
+       1
+(1 row)
+
+
+2. 
+create or replace function increase() returns int as
+'declare
+stno int;
+begin
+for stno in select sno from student where sno in(select sno from st where marks>35 and marks<40)
+loop
+ raise notice''Your Marks are increased to 40'';
+ update st set marks=40 where sno=stno;
+if not found then
+  raise exception''No Students Have Less Marks'';
+ end if;
+end loop;
+return 1;
+end;
+'language 'plpgsql'; 
+
+CREATE FUNCTION
+
+bcasy13=# select increase();
+NOTICE:  Your Marks are increased to 40
+ increase 
+----------
+        1
+(1 row)
+
+
+(1 row)
+
+===================================================================================================================================================================================
+
+Triggers
+
+===================================================================================================================================================================================
+
+1. 
+create or replace function delstud() returns trigger as
+'begin
+raise notice''Student Record is being Deleted'';
+return old;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+create trigger sttrig before delete on student for each row execute procedure delstud(); 
+CREATE TRIGGER
+
+bcasy13=# delete from student where sno=1;
+NOTICE:  Student Record is bein Deleted
+DELETE 1
+
+2.
+create or replace function validmark() returns trigger as
+'begin
+ if(new.marks<0 or new.marks>100) then
+   raise exception''Marks entered are INVALID'';
+ end if;
+ return old;
+end;
+'language 'plpgsql'; 
+CREATE FUNCTION
+
+bcasy13=# create trigger valid before insert or update on st for each row execute procedure validmark(); 
+CREATE TRIGGER
+
+bcasy13=# insert into st values(3,54,'C',120);
+ERROR:  Marks entered are INVALID
+
+

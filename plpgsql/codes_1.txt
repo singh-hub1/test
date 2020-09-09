@@ -1,0 +1,150 @@
+do $$
+declare
+   actor_count integer;
+begin
+   -- select the number of actors from the actor table
+   select count(*)
+   into actor_count
+   from actor;
+
+   -- show the number of actors
+   raise notice 'The number of actors: %', actor_count;
+end; $$
+------------------------------------------------------------------------
+do $$
+declare
+   selected_actor actor%rowtype;
+begin
+   -- select actor with id 10  
+   select *
+   from actor
+   into selected_actor
+   where actor_id = 10;
+
+   -- show the number of actor
+   raise notice 'The actor name is % %',
+      selected_actor.first_name,
+      selected_actor.last_name;
+end; $$
+-------------------------------------------------------------------------
+do
+$$
+declare
+rec record;
+begin
+-- select the film
+select film_id, title, length
+into rec
+from film
+where film_id = 200;
+
+raise notice '% % %', rec.film_id, rec.title, rec.length;  
+
+end;
+$$
+language plpgsql;
+-------------------------------------------------------------------------
+do
+$$
+declare
+rec record;
+begin
+for rec in select title, length
+from film
+where length > 50
+order by length
+loop
+raise notice '% (%)', rec.title, rec.length;
+end loop;
+end;
+$$
+-----------------------------------------------------------
+do $$
+declare
+   vat constant numeric := 0.1;
+   net_price    numeric := 20.5;
+begin
+   raise notice 'The selling price is %', net_price * ( 1 + vat );
+end $$;
+NOTICE:  The selling price is 22.55
+Now, if you try to change the value of the constant as follows:
+
+do $$
+declare
+   vat constant numeric := 0.1;
+   net_price    numeric := 20.5;
+begin
+   raise notice 'The selling price is %', net_price * ( 1 + vat);
+   vat := 0.05;
+end $$;
+--------------------------------------------------------------------
+do $$
+declare
+   start_at constant time := now();
+begin
+   raise notice Start executing block at %', start_at;
+end $$;
+--------------------------------------------
+do $$
+declare
+  selected_film film%rowtype;
+  input_film_id film.film_id%type := 0;
+begin  
+
+  select * from film
+  into selected_film
+  where film_id = input_film_id;
+ 
+  if not found then
+     raise notice'The film % could not be found',
+   input_film_id;
+  end if;
+end $$
+---------------------------------------------------------------------------
+do $$
+declare
+  selected_film film%rowtype;
+  input_film_id film.film_id%type := 100;
+begin  
+
+  select * from film
+  into selected_film
+  where film_id = input_film_id;
+ 
+  if not found then
+     raise notice 'The film % could not be found',
+   input_film_id;
+  else
+     raise notice 'The film title is %', selected_film.title;
+  end if;
+end $$
+---------------------------------------------------
+do $$
+declare
+   v_film film%rowtype;
+   len_description varchar(100);
+begin  
+
+  select * from film
+  into v_film
+  where film_id = 100;
+ 
+  if not found then
+     raise notice 'Film not found';
+  else
+      if v_film.length >0 and v_film.length <= 50 then
+len_description := 'Short';
+ elsif v_film.length > 50 and v_film.length < 120 then
+len_description := 'Medium';
+ elsif v_film.length > 120 then
+len_description := 'Long';
+ else
+len_description := 'N/A';
+ end if;
+   
+ raise notice 'The % film is %.',
+    v_film.title,  
+    len_description;
+  end if;
+end $$
+------------------------------------------------------------

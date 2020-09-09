@@ -1,0 +1,396 @@
+--Overview of PostgreSQL PL/pgSQL--
+__________________________________________________________________________________________________________________________________________________
+PL/pgSQL is a procedural programming language for the PostgreSQL database system.
+
+PL/pgSQL allows you to extend the functionality of the PostgreSQL database server by creating server objects with complex logic.
+
+PL/pgSQL was designed to :
+
+1)Create user-defined functions, stored procedures, and triggers.
+2)Extend standard SQL by adding control structures such as if, case, and loop statements.
+I3)nherit all user-defined functions, operators, and types.
+ 	Since PostgreSQL 9.0, PL/pgSQL is installed by default.
+
+-----------Advantages of using PL/pgSQL:--------------
+____________________________________________________
+SQL is a query language that allows you to query data from the database easily. However, PostgreSQL only can execute SQL statements individually.
+
+It means that you have multiple statements, you need to execute them one by one like this:
+
+1)First, send a query to the PostgreSQL database server.
+2)Next, wait for it to process.
+3)Then, process the result set.
+4)After that, do some calculations.
+5)Finally, send another query to the PostgreSQL database server and repeat this process.
+This process incurs the interprocess commmunication and network overheads.
+
+To resolve this issue, PostgreSQL uses PL/pgSQL.
+
+PL/pgSQL wraps multiple statements in an object and store it on the PostgreSQL database server.
+
+So instead of sending multiple statements to the server one by one, you can send one statement to execute the object stored in the server. This allows you to:
+
+1)Reduce the number of round trips between the application and the PostgreSQL database server.
+2)Avoid transferring the immediate results between the application and the server.
+-----------PostgreSQL PL/pgSQL disadvantages:----------------------
+______________________________________________________________________________
+Besides the advantages of using PL/pgSQL, there are some caveats:
+
+1)Slower in software development because PL/pgSQL requires specialized skills that many developers do not possess.
+2)Difficult to manage versions and hard to debug.
+3)May not be portable to other database management systems.
+	In this tutorial, you have a brief overview of PostgreSQL PL/pgSQL, its advantages, and disadvantages
+
+---------------Dollar-Quoted String Constants------------------
+__________________________________________________________________________________
+Summary: in this tutorial, you will learn how to use the dollar-quoted string constants ($$) in user-defined functions and stored procedures.
+
+----------------Introduction the dollar-quoted string constant syntax-------------
+In PostgreSQL, you use single quotes for a string constant like this:
+
+select 'String constant';
+When a string constant contains a single quote ('), you need to escape it by doubling up the single quote.
+
+ For example:
+ select 'I''m also a string constant';
+If you use an old version of PostgreSQL, you can prepend the string constant with E to declare the postfix escape string syntax and use the backslash \ to escape the single quote like this:
+select E'I\'m also a string constant';
+If a string constant contains a backslash, you need to escape it by using another backslash.
+
+The problem arises when the string constant contains many single quotes and backslashes. Doubling every single quote and backslash makes the string constant more difficult to read and maintain.
+
+PostgreSQL version 8.0 introduced the dollar quoting feature to make string constants more readable.
+
+The following shows the syntax of the dollar-quoted string constants:
+$tag$<string_constant>$tag$
+In this syntax, the tag is optional. It may contain zero or many characters.
+
+Between the $tag$, you can place any string with single quotes (') and backslashes (\). For example:
+select $$I'm a string constant that contains a backslash \$$;
+In this example, we did not specify the tag between the two dollar signs($).
+
+The following example uses the dollar-quoted string constant syntax with a tag:
+
+SELECT $message$I'm a string constant that contains a backslash \$message$;
+In this example, we used the string message as a tag between the two dollar signs ($ )
+
+---------Using dollar-quoted string constant in anonymous blocks--------
+_____________________________________________________________________________________
+The following shows the anonymous block in PL/pgSQL:
+do 
+'declare
+   film_count integer;
+begin 
+   select count(*) into film_count
+   from film;
+   raise notice ''The number of films: %'', film_count;
+end;';
+Note that you will learn about the anonymous block in the PL/pgSQL block structure tutorial. In this tutorial, you can copy and paste the code in any PostgreSQL client tool like pgAdmin or psql to execute it.
+
+The code in the block must be surrounded by single quotes. If it has any single quote, you need to escape it by doubling it like this:
+
+raise notice ''The number of films: %'', film_count;
+To avoid escaping every single quotes and backslashes, you can use the dollar-quoted string as follows:
+
+do 
+$$
+declare
+   film_count integer;
+begin 
+   select count(*) into film_count
+   from film;
+   raise notice 'The number of films: %', film_count;
+end;
+$$
+In this example, you don’t need to escape the single quotes and backslashes.
+
+-------------Using dollar-quoted string constants in functions-------------------
+__________________________________________________________________________________
+The following shows the syntax of the CREATE FUNCTION statement that allows you to create a user-defined function:
+
+create function function_name(param_list) 
+    returns datatype
+language lang_name
+as 
+ 'function_body'
+Note that you will learn more about the syntax of CREATE FUNCTION statement in the creating function tutorial.
+
+In this syntax, the function_body is a string constant. For example, the following function finds a film by its id:
+create function find_film_by_id(
+   id int
+) returns film 
+language sql
+as 
+  'select * from film 
+   where film_id = id';
+As you can see, the body of the find_film_by_id() function is surrounded by single quotes.
+
+If the function has many statements, it becomes more difficult to read. In this case, you can use dollar-quoted string constant syntax:
+
+create function find_film_by_id(
+   id int
+) returns film 
+language sql
+as 
+$$
+  select * from film 
+  where film_id = id;  
+$$; 
+Now, you can place any piece of code between the $$ and $$ without using single quotes or backslashes to escape single quotes and backslashes.
+
+------------------Using dollar-quoted string constants in stored procedures-----------------
+_________________________________________________________________________________________
+Similarly, you can use the dollar-quoted string constant syntax in stored procedures like this:
+create procedure proc_name(param_list)
+language lang_name
+as $$
+  -- stored procedure body
+$$
+Summary:
+_______
+1)Use quoted-dollar string constants to avoid escaping single quotes or backslashes.
+2)Always use quoted-dollar string constants in user-defined functions and stored procedures to make the code more readable.
+
+
+--------------------PL/pgSQL Block Structure-----------------------------------
+_______________________________________________________________________________
+
+Summary: in this tutorial, you will learn about the block structure of PL/pgSQL and how to write and execute your first PL/pgSQL block.
+
+PL/pgSQL is a block-structured language, therefore, a PL/pgSQL function or stored procedure is organized into blocks.
+
+The following illustrates the syntax of a complete block in PL/pgSQL:
+[ <<label>> ]----------this part is optional 
+[ declare
+    declarations ]
+begin
+    statements;
+	...
+end [ label ];
+Let’s examine the block structure in more detail:
+
+1)Each block has two sections: declaration and body. The declaration section is optional while the body section is required. A block is ended with a semicolon (;) after the END keyword.
+2)A block may have an optional label located at the beginning and at the end. You use the block label when you want to specify it in the EXIT statement of the block body or when you want to qualify the names of variables declared in the block.
+3)The declaration section is where you declare all variables used within the body section. Each statement in the declaration section is terminated with a semicolon (;).
+4)The body section is where you place the code. Each statement in the body section is also terminated with a semicolon (;).
+
+----------------PL/pgSQL block structure example------------------------------
+________________________________________________________________________
+The following example illustrates a very simple block. It is called an anonymous block.
+
+do $$ 
+<<first_block>>
+declare
+  film_count integer := 0;
+begin
+   -- get the number of films
+   select count(*) 
+   into film_count
+   from film;
+   -- display a message
+   raise notice 'The number of films is %', film_count;
+end first_block $$;
+
+NOTICE:  The current value of counter is 1
+To execute a block from pgAdmin, you click the Execute button as shown in the following picture:
+
+Notice that the DO statement does not belong to the block. It is used to execute an anonymous block. PostgreSQL introduced the DO statement since version 9.0.
+
+The anonymous block has to be surrounded in single quotes like this:
+'<<first_block>>
+declare
+  film_count integer := 0;
+begin
+   -- get the number of films
+   select count(*) 
+   into film_count
+   from film;
+   -- display a message
+   raise notice ''The number of films is %'', film_count;
+end first_block';
+
+However, we used the dollar-quoted string constant syntax to make it more readable.
+
+In the declaration section, we declared a variable film_count and set its value to zero.
+
+film_count integer := 0;
+Inside the body section, we used a select into statement with the count() function to get the number of films from the film table and assign the result to the film_count variable.
+
+select count(*) 
+into film_count
+from film;
+
+After that, we showed a message using raise noticestatement:
+
+raise notice 'The number of films is %', film_count;
+The % is a placeholder that is replaced by the content of the film_count variable.
+
+Note that the first_block label is just for demonstration purposes. It does nothing in this example.
+
+------------------------PL/pgSQL Subblocks----------------------------------
+____________________________________________________________________________________
+PL/pgSQL allows you to place a block inside the body of another block.
+
+The block nested inside another block is called a subblock. The block that contains the subblock is referred to as an outer block.
+
+The following picture illustrates the outerblock and subblock:
+
+plpgsql block structure
+Typically, you divide a large block into smaller and more logical subblocks. The variables in the subblock can have the names as the ones in the outer block, even though it is not a good practice.
+
+Summary:
+
+1)PL/pgSQL is a blocked-structure language. It organize a program into blocks.
+2)A block contains two parts: declaration and body. The declaration part is optional while the body part is mandatory.
+3)Blocks can be nested. A nested block is a block placed inside the body of another block.
+
+-----------------PL/pgSQL Variables----------------------
+______________________________________________________________________
+
+Summary: in this tutorial, you will learn various techniques to declare PL/pgSQL variables.
+
+-----------------Introduction to variables in PL/pgSQL----------------------------
+
+A variable is a meaningful name of a memory location. A variable holds a value that can be changed through the block. A variable is always associated with a particular data type.
+
+Before using a variable, you must declare it in the declaration section of the PL/pgSQL block.
+
+The following illustrates the syntax of declaring a variable.
+
+variable_name data_type [:= expression];
+
+In this syntax:
+
+1)First, specify the name of the variable. It is a good practice to assign a meaningful name to a variable. For example, instead of naming a variable i you should use index or counter.
+2)Second, associate a specific data type with the variable. The data type can be any valid data type such as integer, numeric, varchar, and char.
+3)Third, optionally assign a default value to a variable. If you don’t do so, the initial value of the variable is NULL.
+
+Note that you can use either := or = assignment operator to initialize and assign a value to a variable.
+
+The following example illustrates how to declare and initialize variables:
+
+do $$ 
+declare
+   counter    integer := 1;
+   first_name varchar(50) := 'John';
+   last_name  varchar(50) := 'Doe';
+   payment    numeric(11,2) := 20.5;
+begin 
+   raise notice '% % % has been paid % USD', 
+       counter, 
+	   first_name, 
+	   last_name, 
+	   payment;
+end $$;
+The counter variable is an integer that is initialized to 1
+
+The first_name and last_name are varchar(50) and initialized to 'John' and 'Doe' string constants.
+
+The type of payment is numeric and its value is initialized to 20.5
+
+--------------------------Variable initialization timing---------------------------------
+____________________________________________________________________________________
+PostgreSQL evaluates the default value of a variable and assigns it to the variable when the block is entered. 
+
+For example:
+do $$ 
+declare
+   created_at time := now();
+begin 
+   raise notice '%', created_at;
+   perform pg_sleep(10);
+   raise notice '%', created_at;
+end $$;
+
+Here is the output:
+NOTICE:  14:23:33.064008
+NOTICE:  14:23:33.064008
+In this example:
+
+1)First, declare a variable whose default value is initialized to the current time.
+2)Second, print out the value of the variable and pass the execution in 10 seconds using the pg_sleep() function.
+3)Third, print out the value of the created_at variable again.
+As shown clearly from the output, the value of the created_at is only initialized once when the block is entered.
+
+-------------------------Copying data types----------------------------------------
+__________________________________________________________________
+The %type provides the data type of a table column or another variable. Typically, you use the %type to declare a variable that holds a value from the database or another variable.
+
+The following illustrates how to declare a variable with the data type of a table column:
+
+variable_name table_name.column_name%type;
+
+And the following shows how to declare a variable with the data type of another variable:
+
+variable_name variable%type;
+
+See the following film table from the sample database:
+
+
+This example uses the type copying technique to declare variables that hold values which come from the film table:
+
+do $$ 
+declare
+   film_title film.title%type;
+   featured_title film_title%type;
+begin 
+   -- get title of the film id 100
+   select title
+   from film
+   into film_title
+   where film_id = 100;
+   
+   -- show the film title
+   raise notice 'Film title id 100: %s', film_title;
+end; $$
+
+This example declared two variables:
+
+1)The film_title variable has the same data type as the title column in the film table from the sample database.
+2)The featured_title has the same data type as the data type of the film_title variable.
+**********By using type copying feature, you get the following advantages:
+
+1)First, you don’t need to know the type of the column or reference that you are referencing.
+2)Second, if the data type of the referenced column name (or variable) changes, you don’t need to change the definition of the function.
+
+-----------------Variables in block and subblock---------------------------
+________________________________________________________________
+
+When you declare a variable in a subblock which hs the same name as another variable in the outer block, the variable in the outer block is hidden in the subblock.
+
+In case you want to access a variable in the outer block, you use the block label to qualify its name as shown in the following example:
+
+do $$ 
+<<outer_block>>
+declare
+  counter integer := 0;
+begin
+   counter := counter + 1;
+   raise notice 'The current value of the counter is %', counter;
+
+   declare
+       counter integer := 0;
+   begin
+       counter := counter + 10;
+       raise notice 'Counter in the subblock is %', counter;
+       raise notice 'Counter in the outer block is %', outer_block.counter;
+   end;
+
+   raise notice 'Counter in the outer block is %', counter;
+   
+end outer_block $$;
+
+  OUTPUT:      
+NOTICE:  The current value of the counter is 1
+NOTICE:  Counter in the subblock is 10
+NOTICE:  Counter in the outer block is 1
+NOTICE:  Counter in the outer block is 1
+
+In this example:
+______________________
+
+1)First, declare a variable named counter in the outer_block.
+2)Next, declare a variable with the same name in the subblock.
+3)Then, before entering into the subblock, the value of the counter is one. In the subblock, we increase the value of the counter to ten and print it out. Notice that the change only affects the counter variable in the subblock.
+4)After that, reference the counter variable in the outer block using the block label to qualify its name outer_block.counter.
+5)Finally, print out the value of the counter variable in the outer block, its value remains intact.
